@@ -1,0 +1,336 @@
+数据备份的目的？误操作（管理者 使用者）
+                硬件损坏 磁盘
+
+数据备份方式：
+物理备份：直接拷贝库和被对应的系统文件
+cp  -rp /var/lib/mysql    /opt/mysqldir.bak
+cp  -rp  /var/lib/mysql/mysql  /opt/mysql.bak
+cp  -rp  /var/lib/mysql/bbsdb/t1.*  /opt/
+tar -zcvf /opt/mysql.tar.gz  /var/lib/mysql/*
+
+rm -rf /var/lib/mysql/mysql
+
+cp  /opt/mysql.bak  /var/lib/mysql/mysql
+chown  -R mysql:mysql  /var/lib/mysql/mysql
+systemctl  restart  mysqld
+
+
+逻辑备份：执行备份操作时，根据备份的库表产生对应的sql
+
+命令，把sql命令存储到指定的文件里。
+
+
+
+数据备份策略：
+完全备份：备份所有数据   一台服务器的所有数据
+                        一个库的所有数据
+                        一张表的所有数据
+只备份新产生的数据：
+差异备份 ：备份完全备份后所有新产生的数据
+增量备份 ：备份上次备份后所有新产生的数据
+               增量
+               差异
+               完全
+
+
+生产环境下对数据做备份的方法
+crond  执行 备份脚本（shell  python go ruby  perl ）
+搭建MySQL主从结构实现数据的自动备份
+
+
+使用脚本对数据做备份要考虑的问题
+
+
+备份频率  周
+备份策略  完全+增量  完全+差异
+备份时间  数据库服务访问量少时
+备份文件名 日期_xx.sql
+存储空间   lv + raid
+
+	 t1   数据  23:00     文件名   备份量
+1  完全       10              1.sql    10
+2  差异       2               2.sql    2
+3             5               3.sql    7
+4             3		      4.sql    10
+5             1               5.sql    11
+6             4               6.sql    15
+7  差异       9		      7.sql    24
+
+
+	 t1   数据  23:00     文件名   备份量
+1  完全       10              1.sql    10
+2  增量       2               2.sql    2
+3             5               3.sql    5
+4             3		      4.sql    3
+5             1               5.sql    1
+6             4               6.sql    4
+7  增量       9		      7.sql    9
+
+11:05
+
+完全备份/恢复
+mysqldump命令
+
+]#mkdir  /mybakdata
+
+]#mysqldump -uroot  -p654321  db1  > 
+
+/mybakdata/db1.sql
+
+]#ls /mybakdata/
+
+]#mysqldump -uroot  -p654321  db1 user  > 
+
+/mybakdata/db1_user.sql
+
+]#mysqldump -uroot  -p654321  -A   >  
+
+/mybakdata/all.sql
+
+]#mysqldump -uroot  -p654321  -B db1 db2   > 
+
+/mybakdata/twodb.sql
+ 
+
+
+mysql命令 完全恢复数据
+]#
+mysql  -uroot  -p654321 [ 库名 ]  <  目录名/xxx.sql
+
+
+50:
+scp   db1_user.sql  192.168.4.51:/root/
+
+51:  
+mysql  -uroot  -p123456
+mysql>  create database userdb;
+mysql> quit;
+]#
+mysql  -uroot  -p123456 userdb  < /root/db1_user.sql
+
+mysql> create database db5;
+mysql> use db5;
+mysql> source  /root/db1_user.sql
+
+
+每周一 半夜23点把 db1 库的所有数据全部备份到系统
+
+的/mybakdb1 目录里。
+
+]#vim  /shell/allbakdb1.sh
+
+:wq
+
+crontab  -e
+00  23  *  *  1  /shell/allbakdb1.sh 
+
+
+增量备份/恢复
+1 启用mysql服务的binlog日志 实现增量备份/恢复
+2 安装第3软件，提供innobackupex命令做增量备份/恢复
+
+
+
+1 启用mysql服务的binlog日志 实现增量备份/恢复
+                 二进制日志
+
+记录除查询之外的SQL命令
+
+select  desc  show 
+
+insert  delete  update  drop  grant  remove
+
+
+启用binlog日志
+查看日志文件内容
+
+
+自定义binlog日志文件存储目录和名字
+
+
+binlog日志文件记录命令方式。
+偏移量 
+时间点
+
+
+执行binlog日志文件里的SQL命令恢复数据。
+
+]# mysqlbinlog 选项  日志文件名  |  mysql -uroot  -
+
+p654321
+
+--start-position=数值   --stop-position=数值
+
+--start-datetime="yyyy-mm-dd hh:mm:ss"  --stop-
+
+datetime="yyyy-mm-dd hh:mm:ss"
+
+
+]# mysqlbinlog  --start-position=1739 --stop-
+
+position=2235 /logdir/plj.000001 |  mysql -uroot  -
+
+p654321
+
+
+]# mysqlbinlog --start-datetime="2018-06-22 
+
+15:36:13" --stop-datetime="2018-06-22 15:37:23"   
+
+/logdir/plj.000001 |  mysql -uroot  -p654321
+
+
+马上生成新的binlog日志文件的方法 ？
+
+
+删除已有的binlog日志文件？
+
+
+
+2 安装第3软件percona，提供innobackupex命令做增量备份/
+
+恢复
+
+2.1 安装提供命令的软件包
+]# yum  -y  install perl-Digest-MD5   perl-DBD-mysql
+
+]# rpm -ivh libev-4.15-1.el6.rf.x86_64.rpm
+
+
+]# rpm -ivh percona-xtrabackup-24-2.4.7-
+
+1.el7.x86_64.rpm
+
+
+  239  rpm -qa | grep -i percona
+  240  rpm -ql percona-xtrabackup-24
+  241  man innobackupex
+
+innobackupex <选项>
+
+innobackupex <选项>
+
+
+完全备份
+备份当前服务器上的所有数据
+]# innobackupex --user root  --password 654321 \
+/allbak  --no-timestamp
+]#ls  /allbak
+
+备份指定库的所有数据
+]# innobackupex --user root  --password 654321 \
+--databases="buydb"  /buydballbak --no-timestamp
+
+]# innobackupex --user root  --password 654321 \
+--databases="buydb mysql"  /towdballbak --no-timestamp
+
+备份指定表的所有数据
+]# innobackupex --user root  --password 654321 \
+--databases="buydb.a"  /allbakatab --no-timestamp
+
+
+
+]# innobackupex --user root  --password 654321 \
+--databases="mysql sys performance_schema buydb" 
+
+/buydbfull --no-timestamp
+
+]# ls  /buydbfull
+
+完全恢复 (要求数据库目录为空)
+重做日志 --apply-log
+]#innobackupex --user root  --password 654321 \
+ --apply-log  /buydbfull
+
+清空数据库目录
+]# rm  -rf  /var/lib/mysql/*
+]# systemctl  stop  mysqld
+
+恢复数据 --copy-back
+]#innobackupex --user root  --password 654321 \
+ --copy-back  /buydbfull
+]# chown  -R mysql:mysql /var/lib/mysql
+启动数据库服务
+]# systemctl  start  mysqld
+]# mysql  -uroot  -p654321
+mysql> show databases;
+mysql> select  * from  buydb.a;
+ 
+
+
+
+innobackupex增量备份、恢复
+
+做首次备份（完全备份）
+]# innobackupex --user root  --password 654321 \
+--databases="mysql sys performance_schema buydb" 
+
+/fullbuydb --no-timestamp
+
+]# ls  /fullbuydb
+
+写新数据,做增量备份
+--incremental 指定增量备份文件存储目录
+--incremental-basedir=上次备份文件存储目录
+
+mysql> insert into  buydb.a values(201),(202)...
+
+]# innobackupex --user root  --password 654321 \
+--databases="mysql sys performance_schema buydb" \
+--incremental /new1dir  --incremental-basedir=/fullbuydb \
+--no-timestamp
+
+]# ls /new1dir
+
+
+写新数据,做增量备份
+mysql> insert into  buydb.a values(301),(302)...
+
+]# innobackupex --user root  --password 654321 \
+--databases="mysql sys performance_schema buydb" \
+--incremental /new2dir  --incremental-basedir=/new1dir \
+--no-timestamp
+
+]# ls /new2dir
+
+
+innodb 和 xtrdb
+
+cd /var/lib/mysql/
+事务日志文件
+ib_logfile1
+ib_logfile0
+ibdata1   
+
+LSN 日志序列号
+
+xtrabackup_checkpoints
+
+增量恢复
+增量备份目录名     --incremental-dir=
+重做并合并日志 --apply-log  --redo-only
+
+221  innobackupex --user root  --password 654321 --apply-
+
+log  --redo-only  /fullbuydb
+  
+222  innobackupex --user root  --password 654321 --apply-
+
+log  --redo-only  /fullbuydb  --incremental-dir=/new1dir
+
+223  innobackupex --user root  --password 654321 --apply-
+
+log  --redo-only  /fullbuydb  --incremental-dir=/new2dir
+
+
+清空数据库目录  停止服务
+[root@host50 ~]# rm  -rf /var/lib/mysql/*
+[root@host50 ~]# systemctl  stop mysqld
+
+
+恢复数据
+]# innobackupex   --copy-back /fullbuydb 
+chown  -R  mysql:mysql /var/lib/mysql
+
+启动服务
+]# systemctl  start mysqld

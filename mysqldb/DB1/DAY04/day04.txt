@@ -1,0 +1,300 @@
+多表查询
+安装图形管理工具
+用户授权及权限撤销 *
++++++++++++++++++++++++++++++++++++++++++
+复制表:功能1：  备份表   功能2： 快速建表
+mysql> create  table  库.表  sql查询；
+
+create database  db4;
+create table  db4.t1 select * from db1.user;
+ 
+create table  db4.t2 select id,name from db1.user limit  10;
+
+create table  db4.t3 select * from db1.user
+where  1 = 2;
+
+use db4;
+show tables;
+
+
+多表查询：  select   字段名列表  from 表 where 条件；
+
+教学
+成绩表 学号 姓名 课程名  成绩
+信息表 学号 姓名 年龄  地址
+
+
+select  姓名,成绩 from  成绩表 where 姓名 in (select 姓名  from 信息表 where 地址="北京");
+
+
+
+
+
+就业
+就业表
+企业表
+
+where 嵌套查询
+把内层的查询结果作为外层 查询的查询条件。
+
+select  字段名列表  from  表 where 条件(select  字段名列表  from  表 where 条件);
+
+
+select  name,uid from db1.user;
+
+select  avg(uid) from db1.user;
+
+
+select  name,uid from db1.user where  uid < (select  avg(uid) from db1.user);
+
+
+desc mysql.user;
+select host,user from mysql.user;
+
+select user from mysql.user where host="localhost";
+
+
+select  name from db4.t1 where name in (select user from mysql.user where 
+
+host="localhost");
+
+10:00
+
+
+连接查询：（交叉连接  自然连接  内连接  外连接）
+
+select  字段名列表 from  表a ,表b;
+迪卡尔集                  10   3 
+                          10 x 3 = 30
+
+select  字段名列表 from  表a ,表b where 条件;
+
+create table db4.t5 select name,uid,shell from db1.user limit 3;
+
+create table  db4.t6  select name,uid,gid,homedir from db1.user limit 5;
+
+
+select  *  from  t5,t6;
+select  *  from  t5,t6 where t5.uid = t6.uid; 
+
+select  t5.shell,t6.*  from  t5,t6 where t5.uid = t6.uid;
+
+select  t5.name,t6.name  from  t5,t6 where t5.uid = t6.uid;
+
+
+左连接 当条件成立时，以左表为主显示查询结果
+select 字段名列表  from  表名1  left join 表名2 on 条件；
+
+
+右连接 当条件成立时，以右表为主显示查询结果
+select 字段名列表  from  表名1  right join 表名2 on 条件；
+
+
+create  table  t7  select name,uid,shell from db1.user limit  5;
+
+create  table  t8  select name,uid,shell from db1.user limit  8;
+
+select  *  from  t7  left join  t8  on  t7.uid = t8.uid;
+
+select  t7.*  from  t7  left join  t8  on  t7.uid = t8.uid;
+
+select  *  from  t7  right join  t8  on  t7.uid = t8.uid;
+
+
+部署软件运行环境 LINUX httpd MySQL php  （ LAMP）
+yum  -y  install httpd  php  php-mysql
+systemctl  start  httpd
+systemctl  enable  httpd
+[root@host50 ~]# vim /var/www/html/test.php
+<?php
+phpinfo();
+?>
+[root@host50 ~]# 
+
+254:
+http://192.168.4.50/test.php
+
+安装软件
+]#tar -zxf phpMyAdmin-2.11.11-all-languages.tar.gz
+-C /var/www/html/
+
+]#cd /var/www/html/
+
+]#mv phpMyAdmin-2.11.11-all-languages/ phpmyadmin
+
+]#chown -R apache:apache phpmyadmin/
+
+指定管理的数据库服务器
+]# cd phpmyadmin/
+]# cp config.sample.inc.php config.inc.php
+
+]# vim  config.inc.php
+$cfg['blowfish_secret'] = 'plj123';
+$cfg['Servers'][$i]['host'] = 'localhost';
+:wq
+
+mysql  -hlocalhost -uroot -p123456
+
+254:
+http://192.168.4.50/phpmyadmin
+              用户名 root
+              密码   123456
+
+
+给数据库服务器192.168.4.51 安装图形管理工具phpmyadmin
++++++++++++++++++++++++++++++++++++++++++++++
+。
+
+管理员root 用户密码管理：
+
+重置本机登录密码
+[root@host50 ~]# 
+mysqladmin -hlocalhost -uroot -p password "新密码"
+Enter password: 当前登录密码
+
+
+恢复本机登录密码
+]# systemctl stop  mysqld
+]#  vim /etc/my.cnf
+[mysqld]
+skip-grant-tables
+#validate_password_policy=0
+#validate_password_length=6
+:wq
+
+]#systemctl start  mysqld
+]#mysql
+mysql> update 
+    -> mysql.user
+    -> set
+    -> authentication_string=password("654321")
+    -> where
+    -> user="root" and host="localhost";
+mysql> flush privileges;
+mysql> quit
+]#  vim /etc/my.cnf
+[mysqld]
+#skip-grant-tables
+validate_password_policy=0
+validate_password_length=6
+:wq
+]#systemctl restart  mysqld
+]# mysql   -uroot  -p654321
+mysql>
+重置本机登录密码
+[root@host50 ~]# 
+mysqladmin -hlocalhost -uroot -p password "新密码"
+Enter password: 当前登录密码
+用户授权：在数据库服务器上添加可以连接的用户，并可以设置添加用户的访问权限。
+
+默认只有数据库管理在本机能够访问数据库服务器
+
+默认数据库管理员root在本机登录有授权权限。
+
+用户授权命令
+mysql> 
+grant  权限列表 on 数据库名  to  用户名@"客户端地址"  identified by  "密码"  with grant 
+
+option;
+
+
+在50服务器上添加连接用户admin
+grant all on  *.* to  admin@"192.168.4.51"  identified by "123456" with grant  option;
+
+
+
+
+
+ 
+在客户端验证用户权限
+]#which  mysql
+]#yum  -y  install  mariadb
+]#mysql -h192.168.4.50  -uadmin  -p123456
+mysql> select @@hostname;
+mysql> select user();
+mysql> show grants;
+
+mysql>grant all on webdb.*  to  webuser@"192.168.4.%" identified by "123456";
+
+mysql>
+grant select,update(name,uid) on  db1.user to  yaya@"%"  identified by "123456" ;
+
+
+mysql> grant all on  *.*  to  jing@"localhost"  identified by "123456" ;
+
+授权存储在数据库服务器的授权库mysql库里。使用不同的表存储授权信息。user   db  tables_priv  
+
+columns_priv
+
+
+select host,user from  mysql.user;
+show grants  for  yaya@"%"；
+
+select user from  mysql.user;
+select * from mysql.user where user="admin"\G;
+
+
+select host,user,db from mysql.db;
+
+select * from mysql.db 
+where user="webuser" and db="webdb"\G;
+
+
+select host,user,db,table_name from mysql.tables_priv;
+
+
+select * from mysql.tables_priv where user="yaya"\G;
+
+select  * from  mysql.columns_priv;
+
+
+mysql> update  mysql.tables_priv set Table_priv="Select,insert" 
+where  user="yaya";
+
+mysql> flush privileges;
+
+mysql> show  grants  for  yaya@"%";
+
+
+权限撤销 
+撤销的是用户的权限
+对数据库有过授权授权才可以撤销权限
+
+mysql>  
+revoke   权限列表 on 数据库  
+from  
+用户名@"客户端地址"；
+
+
+MySQL> 
+revoke GRANT OPTION on  *.* from 'admin'@'192.168.4.51';
+
+show grants for  admin@'192.168.4.51';
+
+revoke delete on  *.* from 'admin'@'192.168.4.51';
+
+revoke select,update on *.* from 'admin'@'192.168.4.51';
+
+revoke all on *.* from 'admin'@'192.168.4.51';
+
+删除授权用户
+drop  user 用户名@"客户端地址";
+drop  user  'admin'@'192.168.4.51';
+
+授权用户修改登录密码
+mysql> set password=password("654321");
+
+管理员root修改授权用户的连接密码
+mysql> set  password   
+for 
+用户名@"客户端地址"=password("abc321");
+ 
+
+权限关键字
+SELECT, INSERT, UPDATE, CREATE, DROP, RELOAD, SHUTDOWN, PROCESS, FILE, REFERENCES, INDEX, 
+
+ALTER, SHOW DATABASES, SUPER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION 
+
+SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, CREATE 
+
+USER, EVENT, TRIGGER, CREATE TABLESPACE 

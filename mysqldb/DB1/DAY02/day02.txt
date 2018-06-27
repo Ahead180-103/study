@@ -1,0 +1,373 @@
+搭建MySQL数据库服务器：
+装包  默认配置运行  启动服务  查看服务运
+
+行状态
+使用初始密码登录并设置登录密码
+
+
+把数据存储到数据库服务器上步骤：
+1 连接服务器  mysql -hlocalhost  -u用户
+
+名  -p密码
+
+2 库 ： 
+查看 创建  删除 切换 查看已有的表 显示当
+
+前所在库
+
+3 表  查看 创建  删除
+      表记录的管理 
+      select   update  delete   insert
+4 断开连接  quit   exit  \q
+
+
+三、MySQL数据类型
+数值类型：整型 浮点型
+字符类型
+日期时间  年  日期 时间  日期时间
+
+datetime timestamp
+枚举类型  enum  set
+
+
+insert into  t9  values()
+
+
+MySQL内置时间函数的的使用
+
+使用时间函数获取数据给日期时间类型字段赋
+
+值
+
+datetime与 timestamp的区别
+
+数值类型宽度数字符类型宽度的区别 
+age  int(2)
+name char(2)
+
+
+
+
+
+
+select now();
+select curdate();
+select  curtime();
+
+select year( now() ) ;
+select date( now() ) ;
+select month( now() ) ;
+select day( now() ) ;
+select time( now() ) ;
+select year( 20191120 ) ;
+
+    
+mysql> insert into  t7 
+values
+("jing",year(19901120),date(now
+
+()),083000,now());
+
+select  *  from t7;
+
+create  table   t8(
+name  char(5),
+meetting   datetime,
+party       timestamp
+);
+
+insert into  t8  values ("bob",now
+
+(),now());
+
+insert into  t8(name,meetting)  
+values ("lucy",20191120214858);
+
+insert into  t8(name,party)  
+values ("lucy",20150920214858);
+
+select  * from t8;
+
+数值类型宽度数字符类型宽度的区别 
+age   int(3)
+name  char(2)
+
+create  table  t12(
+name  char(5)  ,
+level int(3) zerofill,
+money int(5) zerofill
+);
+
+insert into  t12 values("swk",8,29);
+insert into  t12 values("zbj",27,193);
+select  *  from  t12;
+
+
++++++++++++++++++++++++++++++++
+DBA-Day02
+字段约束条件
+
+create  table  t14(
+name  char(5)  not null ,
+level int(3) zerofill  default 0 ,
+money tinyint(2) zerofill default 0  
+);
+
+
+create  table  t15(
+name  char(5)  not null  default  "",
+level int(3) zerofill  default 0 ,
+money tinyint(2) zerofill default 0  
+);
+
+
+修改表结构
+
+alter  table  t15  
+add  email  varchar(30)  default 
+
+"stu@tedu.cn",
+add    tel  char(11);
+
+alter  table  t15  
+add   stu_id  char(9) first;
+
+alter  table  t15  
+add   sex   enum("boy","girl","no") 
+
+default "no"
+after  name;
+
+desc t15;
+select  *  from   t15;
+
+
+ 
+alter table  t15  modify  name char(10) 
+
+not null;
+
+alter table  t15 modify tel char(11) 
+
+after name;
+
+desc t15;
+
+
+mysql> alter table   t15  drop 
+
+stu_id,drop tel;
+
+select  * from t15;
+desc t15;
+
+
+mysql> alter table  t15
+    -> change email mail varchar(30) 
+
+default "stu@tedu.cn";
+
+mysql> alter table  t15 change  mail 
+
+Email varchar(50) default "stu@163.com";
+
+desc  t15;
+
+show  tables;
+mysql> alter table   t15 rename stuinfo;
+show tables;
+++++++++++++++++++++++++++++++++++
+MySQL键值
+普通索引  index  *
+唯一索引  unique
+主键       primary key  *
+外键	   foreign  key *
+全文索引   fulltext
+
+使用规则   创建  删除  查看  
+
+目录 1 -  200
+
+拼音  a - z  p 210 ----215
+笔画  1 - 20    庞
+部首   
+
+正文201-5000
+
+index
+stuinfo ---->  
+
+/var/lib/mysql/db1/stuinfo.*
+name  age  class  homeaddr
+null
+bob
+bob
+abc
+jim
+jerry
+
+50 
+51
+
++1
+-1 
+
+select * from db1.stunifo where 
+
+name="zhangsan";
+1
+2
+3
+
+
+select   >  insert
+
+
+
+create  table  t16(
+name  char(10),
+age int(2),
+class char(7),
+index(name),
+index(class)
+);
+
+desc  t16;
+show  index from  t16\G;
+drop  index  class  on  t16;
+desc  t16;
+
+create index  class  on  t16(class);
+desc  t16;
+
+
+BTREE 二叉树
+
+3
+
+           1-10
+     1-5             6-10
+
+1-2.5 2.6-5
+
+
+
+select  * from  t1 where name="zs";
+                        class ="1803"
++++++++++++++++++++++++++++++++
+create  table t17(
+stu_id char(9) primary key,
+name  char(10)
+);
+
+create  table t18(
+stu_id char(9) ,
+name  char(10),
+primary key(stu_id)
+);
+
+desc  t18  ; desc  t17;
+
+
+alter table t17 drop  primary key;
+
+
+alter table t17 add  primary key
+
+(stu_id);
+
+PRI     PRI
+ cip     serport   status
+  1.1.1.1 22	  no
+  1.1.1.1 21	  yes
+  2.1.1.1 22	  yes
+
+create  table  t19(
+cip  char(15),
+serport smallint(2),
+status  enum("yes","no"),
+primary key(cip,serport)
+);
+
+insert into  t19  values
+
+("1.1.1.1",22,"no");
+
+insert into  t19  values
+
+("1.1.1.1",21,"yes");
+
+insert into  t19  values
+
+("2.1.1.1",22,"yes");
+
+alter table  t19 drop primary key;
+
+desc  t19;
+
+alter table  t19 add primary key
+
+(cip,serport);
+
+desc t19;
+
+AUTO_INCREMENT 字段值自增长 ++
+
+
+create table  t20(
+stu_id   int(2)  primary key  
+
+auto_increment,
+name char(10),
+age  tinyint(2) 
+);
+
+insert into t20(name,age)values
+
+("bob",19);
+
+insert into t20(name,age)values
+
+("tob",19);
+select  * from  t20;
+
+
+mysql> alter table stuinfo 
+    -> add
+    -> id int(2) primary key 
+
+auto_increment
+    -> first;
+++++++++++++++++++++++++++++++++++
+        外键
+stuinfo.name   namelist.name
+         jack              jack
+	      lilei         lilei
+	           lili    lili
+
+ygb
+yg_id name bumen
+1     bob   tea
+6   bob   tea
+
+4     mack   tea
+
+gzb
+gz_id name pay  bumen
+1     bob  2w     tea
+6      bob  3w     tea
+
+4     mack     7w     tea
+
+
+create table  gzb(
+字段列表，
+foreign key(gz_id)  references  ygb
+
+(yg_id) on update cascade 
+on  delete  cascade
+);
+
+
+
+             

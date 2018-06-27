@@ -1,0 +1,347 @@
+匹配条件(select   update   delete）
+
+
+
+
+数值比较  =  >  >=  <  <=  !=
+
+where  字段名  符号   值
+where  字段名  符号   字段名
+
+select  *  from user  where  id = 3;
+select  name,uid,gid  from user  where  
+
+uid = gid;
+select  name  from user  where  uid < 
+
+10;
+
+update  user  set   
+
+password="F",homedir="/student" where  
+
+uid< 10;
+
+
+
+
+
+
+
+字符比较  =  !=
+where  字段名  符号  "值"
+
+select  name from user  where 
+
+shell="/bin/bash";
+
+select  name,shell from user  where 
+
+shell != "/bin/bash";
+
+select  * from user where name="mysql";
+
+匹配空   is  null
+匹配非空 is  not  null
+
+insert into user(name) values("yaya");
+
+select  name  from user 
+where  uid is null ;
+
+update user set uid=4008 where  uid is 
+
+null ;
+
+select  name,uid  from user  where  
+
+name="yaya";
+
+select  name,uid  from user 
+where  uid is not  null ;
+
+
+select * from user where id = 3;
+update user set gid=null where id = 3;
+
+逻辑比较（多个比较条件）
+逻辑与  and   多个条件必须同时成立
+逻辑或  or    多个条件某一个条件成立即可
+逻辑非  !  not  取反
+
+
+性别=man  and  状态=活的  and  颜值=高
+
+性别=man  or  状态=活的  or  颜值=高
+
+select name,uid  from user 
+where 
+name="root" and uid=0 and 
+
+shell="/bin/bash";
+
+select name,uid,shell  from user 
+where 
+name="root" or uid=7 or 
+
+shell="/sbin/nologin";
+
+
+select name,uid from user
+where
+name="root" and uid=1 or uid=3;
+
+() 提高优先级
+select name,uid from user
+where
+name="root" and  ( uid=1 or uid=3);
+
+
+select name,uid from user
+where
+name="root" and  ( uid=0 or uid=3);
+
+范围内匹配
+select name from user where
+name in ("apache","mysql","adm","bin");
+
+select name,shell from user 
+where shell not  in 
+
+("/bin/bash","/sbin/nologin");
+
+select name,uid from user
+where  uid  in (10,20,30,40);
+
+select name,uid from user
+where uid between 1  and 10;
+
+DISTINCT  字段名  不显示字段的重复值
+
+select  distinct shell from user;
+
+
+select distinct shell from user 
+where uid <= 10;
+
+模糊查询like    _   % 
+
+select name,uid from user where 
+name like  '_ _ _';
+
+select name,uid from user where 
+name like  '_ _ _' and  uid > 10;
+
+select name,uid from user where 
+name like  'r_ _';
+
+select name,uid from user where 
+name like  'a%t';
+
+
+select name,uid from user where 
+name like  '_ _%_ _';
+
+insert  into user(id,name)values
+
+(60,null),(61,"");
+
+select id,name from user where 
+name like  '%';
+
+正则匹配
+where 字段名 regexp '正则表达式'；
+^ $ . *  []
+
+select  name,uid from  user  where
+uid  regexp  '....';
+
+select  name,uid from  user  where
+uid  regexp  '^....$';
+
+select  name from  user  where
+name  regexp  't$'
+
+insert into user(name)values("yaya9"),
+
+("6yaya"),("yay5a"),("ya2ya");
+
+ select  name from user  where name 
+
+regexp '[0-9]';
+
+  select  name from user  where name 
+
+regexp '^[0-9]';
+
+
+四则运算  + - * /  %
+alter  table  user add
+age tinyint(2) unsigned  default 18 
+after name;
+
+select name,age, 2018 - age as syear 
+
+from user where  name="root";
+
+update user set  age=age+1 ;
+
+select name,uid,gid,(uid+gid)/2 pjz from 
+
+ user where uid>=10 and uid<=30;
+
+聚集函数
+select avg(uid) from user where id<=10;
+select sum(uid) from user;
+select min(uid) from user;
+select max(uid) from user;
+select count(id) from user;
+select count(name) from user;
+
+select name from user where 
+
+shell="/bin/bash";
+
+select count(name) from user where 
+
+shell="/bin/bash";
+
+select count(*) from user;
+select count(id),count(name) from user;
+
+排序order by 字段名；    
+select name,uid from user
+where uid>=10 and uid<=1000;
+
+
+mysql> select name,uid from user where 
+
+uid>=10 and uid<=1000 order by uid desc;
+
+分组 group  by  字段名；
+select shell from user where uid>=10 and 
+
+uid<=1000;
+select shell from user where uid>=10 and 
+
+uid<=1000  group  by shell;
+select shell from user  group  by shell; 
+过滤数据 having 条件；
+select name from user;
+select name from user having 
+
+name="jerry";
+
+select  id,name from user
+where name like '%'  
+having name is null;
+
+select shell from user 
+where uid>=10 and uid<=1000  
+group  by shell  having shell="sync";
+
+
+sql查询 limit 数字；
+sql查询 limit  3；
+
+sql查询 limit  起始行，行数；
+sql查询 limit 5,5;
+sql查询 limit 0,1;
+sql查询 limit 1;
+select shell from user 
+where uid>=10 and uid<=1000  limit 3;
+
+select  * from user;
+select  * from user limit 0,1;
+select  * from user limit 9,5;
+select  * from user limit 3,3;
+
+select  * from user where uid <=10  
+
+order by uid desc limit 3;
+
+select  * from user where uid <=10  
+
+order by uid desc limit 3,3;
+
+ 
+
+myisam特点
+一个表使用3个文件存储
+t1.frm  t1.MYD  t1.MYI
+表结构   数据    索引
+不支持外键  和事务 和事务回滚
+支持表级锁 （给一张加锁）
+
+
+innodb特点：
+一个表使用2个文件存储
+t2.frm   t2.ibd
+表结构   数据+索引
+支持外键  和事务 和事务回滚
+支持行级锁 （只给被访问的行加锁）
+ 
+
+事务： 一次sql操作从开始到结束的过程。
+
+事务回滚： 在事务执行过程中任意一步操作
+
+失败，恢复所有的操作。
+
+
+ATM 
+插卡  输入密码 登录成功
+
+转账   对方卡号 8888888888
+       转账金额 5W
+       转账中.....  
+		成功 -5w
+                     +5w
+
+                失败 -5w -- > +5w
+                      事务回滚
+退卡
+myisam   a1 a2  a3 ...
+innodb   t1  t2  .....
+
+事务日志文件
+ibdata1 未提交的sql
+        LSN  日志序列号
+
+ib_logfile0 已经提交的SQL
+ib_logfile1
+
+
+mysql> set autocommit = off;
+
+
+
+锁 ： 解决并发访问冲突问题
+
+锁粒度：行锁  表锁  页级锁
+
+锁类型：
+select  读锁（共享锁）
+pc1  select  * from t1; 
+pc2  select  * from t1;
+ 
+insert  update  delete
+
+写锁（排它锁 或互斥锁）
+pc1  
+update   t1 set name="bob" where 
+
+name="root";
+
+pc2 
+update   t1 set name="bob2" where 
+
+name="root";
+
+执行查询操作多的表 适合使用myisam存储引
+
+擎，这样可以节省系统资源
+
+执行写操作多的表 适合使用innodb存储引擎
+
+，这样加大并发访问量。
