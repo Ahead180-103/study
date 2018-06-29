@@ -7,6 +7,6 @@ expect <<EOF
 spawn git push
 expect ":" {send "github\n"}
 expect ":" {send "123456\n"}
-expect "#" {send "echo "欢迎下次光临"\n"}
+expect "#" {send "echo "Thanks and look farwad your coming next time."\n"}
 expect "#" {send "exit\n"}
 EOF
