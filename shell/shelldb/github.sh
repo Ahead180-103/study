@@ -4,6 +4,7 @@ sleep 1
 git commit -m "add"
 sleep 1
 expect <<EOF
+set timeout 50
 spawn git push
 expect ":" {send "github\n"}
 expect ":" {send "123456\n"}
