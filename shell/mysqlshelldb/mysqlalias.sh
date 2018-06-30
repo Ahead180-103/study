@@ -9,3 +9,9 @@ end
 delimiter ;
 
 call say();
+
+show procedure status\G;
+
+drop procedure say;
+
+select * from mysql.proc ;
