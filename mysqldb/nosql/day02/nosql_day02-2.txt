@@ -1,0 +1,584 @@
+[root@host51 ~]# redis-cli -h 192.168.4.51 -p 6351
+192.168.4.51:6351> CLUSTER info
+cluster_state:ok
+cluster_slots_assigned:16384
+cluster_slots_ok:16384
+cluster_slots_pfail:0
+cluster_slots_fail:0
+cluster_known_nodes:6
+cluster_size:3
+cluster_current_epoch:6
+cluster_my_epoch:1
+cluster_stats_messages_ping_sent:6960
+cluster_stats_messages_pong_sent:6949
+cluster_stats_messages_sent:13909
+cluster_stats_messages_ping_received:6944
+cluster_stats_messages_pong_received:6960
+cluster_stats_messages_meet_received:5
+cluster_stats_messages_received:13909
+192.168.4.51:6351> 
+
+192.168.4.51:6351> CLUSTER nodes
+42dee00433c0e12afabad9c2debea1b0c6c055f2 
+
+192.168.4.54:6354@16354 slave 
+
+3550af084c94889ae2d01103e6da5793fdd851fc 0 
+
+1530612232000 4 connected
+4361720c3978aa02347076218580a103c60a6d7f 
+
+192.168.4.52:6352@16352 master - 0 1530612231000 2 
+
+connected 5461-10922
+649d1f967a9facf84f8fbec26f141bc98dd1a9ea 
+
+192.168.4.51:6351@16351 myself,master - 0 
+
+1530612231000 1 connected 0-5460
+353278b8ed5ec1948a5bd5f3f08f28d73dbbe92c 
+
+192.168.4.55:6355@16355 slave 
+
+649d1f967a9facf84f8fbec26f141bc98dd1a9ea 0 
+
+1530612232000 5 connected
+3550af084c94889ae2d01103e6da5793fdd851fc 
+
+192.168.4.53:6353@16353 master - 0 1530612233000 3 
+
+connected 10923-16383
+d934dc39421949f6794af4b9797c59a6695b2530 
+
+192.168.4.56:6356@16356 slave 
+
+4361720c3978aa02347076218580a103c60a6d7f 0 
+
+1530612232714 6 connected
+192.168.4.51:6351> 
+
++++++++++++++++++++++++++++++++++++++++++++++
+测试集群
+1在客户端访问任意一台master角色的redis服务器，查询数
+
+据或存储数据
+
+50:
+]#ping -c  2  192.168.4.5X
+]#redis-cli  -c  -h 192.168.4.51 -p 6351
+> set  name   bob
+> set  age    19
+> keys  *
+> exit
+
+]#redis-cli  -c  -h 192.168.4.52 -p 6351
+> keys  *
+> get age
+> get name
+
+[root@host50 ~]# redis-cli  -c  -h 192.168.4.51 -p 
+
+6351
+192.168.4.51:6351> keys *
+(empty list or set)
+192.168.4.51:6351> set name bob
+-> Redirected to slot [5798] located at 
+
+192.168.4.52:6352
+OK
+192.168.4.52:6352> 
+192.168.4.52:6352> 
+192.168.4.52:6352> set age 19
+-> Redirected to slot [741] located at 
+
+192.168.4.51:6351
+OK
+192.168.4.51:6351> quit
+[root@host50 ~]# 
+
+
+[root@host50 ~]# redis-cli  -c  -h 192.168.4.52 -p 
+
+6352
+192.168.4.52:6352> keys *
+1) "name"
+192.168.4.52:6352> get name
+"bob"
+192.168.4.52:6352> get age
+-> Redirected to slot [741] located at 
+
+192.168.4.51:6351
+"19"
+192.168.4.51:6351> 
+
+
+把某个master角色主机的redis服务停止，对应的从库会自动
+
+升级为master;
+
+
+[root@host51 ~]# redis-trib.rb check 
+
+192.168.4.51:6351
+>>> Performing Cluster Check (using node 
+
+192.168.4.51:6351)
+M: 649d1f967a9facf84f8fbec26f141bc98dd1a9ea 
+
+192.168.4.51:6351
+   slots:0-5460 (5461 slots) master
+   1 additional replica(s)
+S: 42dee00433c0e12afabad9c2debea1b0c6c055f2 
+
+192.168.4.54:6354
+   slots: (0 slots) slave
+   replicates 
+
+3550af084c94889ae2d01103e6da5793fdd851fc
+M: 4361720c3978aa02347076218580a103c60a6d7f 
+
+192.168.4.52:6352
+   slots:5461-10922 (5462 slots) master
+   1 additional replica(s)
+S: 353278b8ed5ec1948a5bd5f3f08f28d73dbbe92c 
+
+192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates 
+
+649d1f967a9facf84f8fbec26f141bc98dd1a9ea
+M: 3550af084c94889ae2d01103e6da5793fdd851fc 
+
+192.168.4.53:6353
+   slots:10923-16383 (5461 slots) master
+   1 additional replica(s)
+S: d934dc39421949f6794af4b9797c59a6695b2530 
+
+192.168.4.56:6356
+   slots: (0 slots) slave
+   replicates 
+
+4361720c3978aa02347076218580a103c60a6d7f
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+[root@host51 ~]# 
+
+[root@host52 ~]# redis-cli  -h 192.168.4.52  -p 6352 
+
+shutdown
+[root@host52 ~]# netstat -utnlp  | grep redis-server
+[root@host52 ~]# 
+
+
+[root@host52 ~]# redis-cli  -h 192.168.4.52  -p 6352 
+
+shutdown
+[root@host52 ~]# netstat -utnlp  | grep redis-server
+[root@host52 ~]# 
+
+
+[root@host52 ~]# /etc/init.d/redis_6379 start
+Starting Redis server...
+[root@host52 ~]# netstat -utnlp  | grep redis-server
+tcp        0      0 192.168.4.52:6352       
+
+0.0.0.0:*               LISTEN      16427/redis-
+
+server  
+tcp        0      0 192.168.4.52:16352      
+
+0.0.0.0:*               LISTEN      16427/redis-
+
+server  
+[root@host52 ~]# 
+
+
++++++++++++++++++++++++++++++++++++++++++++
+管理集群：redis-trib.rb  
+
+向集群里添加redis服务器 50   
+
+运行redis服务  清除已有的数据 做启用集群配置后 重启服
+
+务
+
+
+添加master角色主机 
+]# redis-trib.rb add-node 192.168.4.50:6350  
+
+192.168.4.51:6351
+
+]# redis-trib.rb  check 192.168.4.51:6351
+
+]# redis-trib.rb reshard 192.168.4.51:6351
+1 从当前的集群中拿出多少个hash slots  4096    
+
+(16384/4)  
+2 新主库的ID值
+3 all 从当前的集群中所有主机里获取hash slots
+3 yes  确认配置
+
+]# redis-trib.rb  check 192.168.4.51:6351
+
+
+添加salve角色主机   
+57运行redis服务  清除已有的数据 做启用集群配置后 重启
+
+服务
+
+[root@host51~]# redis-trib.rb add-node --slave 
+
+192.168.4.58:6358 192.168.4.51:6351
+
+>>> Adding node 192.168.4.58:6358 to cluster 
+
+192.168.4.51:6351
+>>> Performing Cluster Check (using node 
+
+192.168.4.51:6351)
+M: 649d1f967a9facf84f8fbec26f141bc98dd1a9ea 
+
+192.168.4.51:6351
+   slots:1365-5460 (4096 slots) master
+   1 additional replica(s)
+S: 42dee00433c0e12afabad9c2debea1b0c6c055f2 
+
+192.168.4.54:6354
+   slots: (0 slots) slave
+   replicates 
+
+3550af084c94889ae2d01103e6da5793fdd851fc
+M: 4361720c3978aa02347076218580a103c60a6d7f 
+
+192.168.4.52:6352
+   slots:6827-10922 (4096 slots) master
+   1 additional replica(s)
+M: 61cc06c156ea2d4d73017adb80d0960e6f359a83 
+
+192.168.4.50:6350
+   slots:0-1364,5461-6826,10923-12287 (4096 slots) 
+
+master
+   0 additional replica(s)
+S: 353278b8ed5ec1948a5bd5f3f08f28d73dbbe92c 
+
+192.168.4.55:6355
+   slots: (0 slots) slave
+   replicates 
+
+649d1f967a9facf84f8fbec26f141bc98dd1a9ea
+M: 3550af084c94889ae2d01103e6da5793fdd851fc 
+
+192.168.4.53:6353
+   slots:12288-16383 (4096 slots) master
+   1 additional replica(s)
+S: d934dc39421949f6794af4b9797c59a6695b2530 
+
+192.168.4.56:6356
+   slots: (0 slots) slave
+   replicates 
+
+4361720c3978aa02347076218580a103c60a6d7f
+[OK] All nodes agree about slots configuration.
+>>> Check for open slots...
+>>> Check slots coverage...
+[OK] All 16384 slots covered.
+Automatically selected master 192.168.4.50:6350
+>>> Send CLUSTER MEET to node 192.168.4.58:6358 to 
+
+make it join the cluster.
+Waiting for the cluster to join....
+>>> Configure node as replica of 192.168.4.50:6350.
+[OK] New node added correctly.
+[root@host51 ~]# 
+
+++++++++++++++++++++++++++++++++++++++++++++++++++
+把slave 角色的主机从集群中移出
+
+
+
+[root@host51 ~]# redis-trib.rb del-node 
+
+192.168.4.51:6351 
+
+76deafa138db5ca6ee66e9567616a1da229dc83a
+>>> Removing node 
+
+76deafa138db5ca6ee66e9567616a1da229dc83a from 
+
+cluster 192.168.4.51:6351
+>>> Sending CLUSTER FORGET messages to the 
+
+cluster...
+>>> SHUTDOWN the node.
+[root@host51 ~]# 
+
+
+把master角色的主机从集群中移出
+[root@host51 ~]# redis-trib.rb del-node 
+
+192.168.4.51:6351  \
+> 61cc06c156ea2d4d73017adb80d0960e6f359a83
+>>> Removing node 
+
+61cc06c156ea2d4d73017adb80d0960e6f359a83 from 
+
+cluster 192.168.4.51:6351
+[ERR] Node 192.168.4.50:6350 is not empty! Reshard 
+
+data away and try again.
+[root@host51 ~]#
+
+[root@host51 ~]# redis-trib.rb reshard 
+
+192.168.4.51:6351
+1 移出多少个hash slots 
+2 接收hash slots 主机的ID
+3 移出hash slots 主机的ID
+4 done 结束ID值输入
+5 yes 提交
+[root@host51 ~]# redis-trib.rb check 
+
+192.168.4.51:6351
+
+
+[root@host51 ~]# redis-trib.rb del-node 
+
+192.168.4.51:6351 
+
+61cc06c156ea2d4d73017adb80d0960e6f359a83
+
+>>> Removing node 
+
+61cc06c156ea2d4d73017adb80d0960e6f359a83 from 
+
+cluster 192.168.4.51:6351
+>>> Sending CLUSTER FORGET messages to the 
+
+cluster...
+>>> SHUTDOWN the node.
+[root@host51 ~]#
+
+
+50  master
+57  slave
+58  slave
+
+把移出的master 或 slave 再次添加到集群里
+[root@host50 ~]# redis-cli  -h 192.168.4.50 -p 6350
+192.168.4.50:6350> CLUSTER RESET
+OK
+192.168.4.50:6350> cluster info
+cluster_state:fail
+
+[root@host51 ~]# redis-trib.rb  add-node 
+
+192.168.4.50:6350 192.168.4.51:6351
+
+把这3台恢复成独立的redis服务器
+50  master
+57  slave
+58  slave
+
+15:55
+
+++++++++++++++++++++++++++++++++++++
+创建集群
++++++++++++++++++++++
+一 集群测试:
+1.1 客户端存取数据的测试：
+redis-cli  -c  -hmaster_ip  -p master_port
+set
+get 
+
+1.2当master角色主机宕机后，对应slave角色主机自动升级
+
+为master. 当宕机的主库恢复后，自动成为当前主库的从库
+
+。
+
+
+二、集群管理 redis-trib.rb 选项  参数
+向集群添加新主机
+(添加master角色主机、添加slave角色主机)
+
+从集群中移出主机
+移出master角色主机、移出slave角色主机
+
+
+把移出的master 或 slave 再次添加到集群里
+
+把集群中的主机恢复为独立的redis服务器
+从集群中移出主机
+禁用集群配置
+重启redis服务
+
+myisam
+
+innodb  XTRDB
+
+innobackupex --user=DBUSER --password=DBUSERPASS  
+
+--databases="库名列表" /path/to/BACKUP-DIR/
+
+
+
+innobackupex --user=DBUSER --password=DBUSERPASS 
+
+/path/to/BACKUP-DIR/ --no-timestamp
+
+
+
+innobackupex --user=DBUSER --password=DBUSERPASS  
+
+--databases="库名列表"  --incremental  目录名  --
+
+incremental-basedir=上次备份目录名 --no-timestamp
+
++++++++++++++++++++++++
+primary  key
+foreign  key(名)  references  t2(字段名)
+普通索引 index  （Btree  B+Tree  Hash）
+
+视图  
+
+存储过程   MySQL脚本
+
+delimiter  //
+create procedure p1(参数)
+begin
+.... ;
+....
+....
+end
+//
+
+delimiter ;
+
+
+
+
+
+配置MySQL主从同步
+master 配置
+启用binlog
+用户授权
+查看binlog日志信息
+
+slave 配置
+测试主库授权用户
+指定server_id
+指定主库信息  
+启动slave 进程
+
+查看slave 状态信息
+IO  Yes 把主库binlog日志的sql命令记录到本机的中继日志
+
+里
+
+从库连接不上主机（ping  firewalld  selinux  grant）
+主库的日志信息指定错误
+
+
+SQL  Yes 执行中继日志里的sql命令
+         执行中继日志里的sql命令时，操作的库表记录在
+
+从库本机没有。
+
+
+show slave status\G;
+Last_IO_Error:
+Last_SQL_Error:
+
+stop  slave;
+change  master to  选项=值，选项=值；
+start  slave;
+
+
+生产环境中如何授权：
+
+grant select ,insert  on gamedb.* to webadmin@"%" 
+
+identified by "123456";
+
+
+
+完全复制 
+半同步     51 52  53  
+异步复制
+
+
++++++++++++++++++++++++++++++++++
+表级锁  锁表
+
+
+行级锁  给每一行加锁
+              myisam
+              innodb
+select  * from user limit 100;
+user  3
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+cpu  30
+
+
+~]# mysqldump -uroot -p123qqq...A --master-data=1  
+
+db11  > /root/db1.sql
+
+
+~]# mysqldump -uroot -p123qqq...A --master-data=2  
+
+db11  > /root/db111.sql
+
+17:35
+
+
+
+
+关系型数据库软件  Oracle  SQL server  DB2 
+                  MySQL  postgrpSQL 
+	          5.7.17
+                  MySQL8 -> mysql8.txt
+
+非关系型数据库软件 memcached  Redis  MongoDB
+
+
+MHA出错原因：
+
+app1.cnf
+管理主机本机的配置 [server default]
+ssh_user=root
+ssh_port=22
+
+repl_user=repluser
+repl_password=123456
+
+#master_ip_failover_script=/etc/mha_manager/master_i
+
+p_failover
+
+
+指定数据库服务器 [server数字]
+
+masterha_check_ssh  --conf=/etc/mha_manager/app1.cnf
+
+masterha_check_repl  --conf=/etc/mha_manager/app1
+
+                  200G
+cp  -rp /var/lib/mysql
+
+
+cp  -rp  /var/lib/mysql/gamedb
+         /var/lib/mysql/ibdata ib_data_logfile0 1
