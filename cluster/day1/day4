@@ -1,0 +1,32 @@
+多路径：当主机到共享存储有多条路径，每条路径都会被识别为一个设备。多路径配置可以将多个设备合并成一个虚拟设备。
+为node1和node3再配置一个网络192.168.2.0/24
+# nmtui
+# ifup  eth1
+node3在192.168.2.0网络上发现共享存储
+[root@node3 ~]# iscsiadm --mode discoverydb --type sendtargets --portal 192.168.2.1 --discover
+[root@node3 ~]# systemctl restart iscsi
+[root@node3 ~]# lsblk   发现新的sdb
+主机通过WWID（全球识别符）来判断哪些路径上的设备是同一设备
+[root@node3 ~]# /lib/udev/scsi_id --whitelisted --device=/dev/sda
+360014059c375e9ab0604771aa3f719f1
+安装多路径设备软件
+[root@node3 ~]# yum install -y device-mapper-multipath
+合并出来的多路径设备，一般起名为mpath[a-z]
+配置多路径
+生成配置文件，不使用用户友好名称
+[root@node3 ~]# mpathconf  --user_friendly_names  n
+修改配置文件
+[root@node3 ~]# vim /etc/multipath.conf 尾部追加
+multipaths {
+    multipath {
+        wwid    "360014059c375e9ab0604771aa3f719f1"
+        alias   mpatha
+    }
+}
+多路径设备出现在/dev/mapper/目录下
+[root@node3 ~]# ls /dev/mapper/
+[root@node3 ~]# systemctl start multipathd
+[root@node3 ~]# ls /dev/mapper/
+[root@node3 ~]# mount /dev/mapper/mpatha1 /var/lib/mysql/
+[root@node3 ~]# ls /var/lib/mysql/
+[root@node3 ~]# multipath -ll   查看多路径信息

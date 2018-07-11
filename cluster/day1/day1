@@ -1,0 +1,94 @@
+张志刚
+2013年，网络，系统管理，服务，安全，监控，集群，RHCE，RHCA
+PYTHON
+集群：
+第一天：存储
+第二天～三天：集群
+第四天～五天：CEPH分布式文件系统
+第六天：复习
+
+开头、提高
+提高阶段：原理
+学过不等于掌握
+掌握：基本上会配置，懂原理
+
+存储方式：
+DAS：直连式存储，如本地硬盘
+NAS：网络附加存储，实际上就是NFS／SAMBA（CIFS）
+SAN：存储区域网络。分成基于IP网络的IP SAN和基于光纤的FC SAN。
+
+配置iSCSI
+准备三台虚机
+[root@room8pc16 ~]# clone-auto7
+初始化
+Node1.tedu.cn  192.168.4.1   iSCSI服务器
+Node2.tedu.cn  192.168.4.2   mysql1
+Node3.tedu.cn  192.168.4.3   mysql2
+关闭防火墙、SELINUX，配置YUM
+（1）启动虚拟机
+[root@room8pc16 ~]# for  vm  in  rh7_node{1..3}
+> do
+> virsh  start  $vm
+> done
+在物理机上连接虚拟机的控制台
+[root@room8pc16 ~]# virsh  console  rh7_node1
+退出时，按ctrl+]
+[root@localhost ~]# nmtui
+iSCSI提供块设备
+块设备，如硬盘、光盘、U盘
+iSCSI服务器端为客户端提供块设备，需要起个名，这个名字是IQN
+IQN名称规范：iqn.时间.域名的反写.字符串:子字符串
+如: iqn.2018-07.cn.tedu.nsd1803:yezhikang
+在iSCSI服务器上添加额外硬盘
+可以在虚拟机不关机的情况下，直接添加硬盘。为node1加一块20GB的硬盘。
+
+配置iSCSI服务端
+安装软件包
+[root@node1 ~]# yum  install  -y  targetcli
+为vdb分区
+MBR: 主引导记录，这种分区格式，最多只能支持4个分区，最大支持2.2TB左右硬盘
+GPT：GUID分区表，可以支持大硬盘，可以支持128个主分区
+[root@node1 ~]# parted  /dev/vdb 
+(parted) mklabel  gpt
+(parted) mkpart  primary  1M  50%
+(parted) mkpart  primary  50%  100%
+(parted) quit  
+[root@node1 ~]# lsblk 
+配置iscsi
+[root@node1 ~]# targetcli 
+给vdb1起个名字formysql，回入到iscsi管理中
+/> /backstores/block  create  formysql  /dev/vdb1 
+创建供客户端访问的iqn名字
+/> /iscsi  create  iqn.2018-07.cn.tedu.nsd1803
+把存储绑定到iqn名字中
+/> /iscsi/iqn.2018-07.cn.tedu.nsd1803/tpg1/luns create /backstores/block/formysql 
+配置ACL，限定允许访问的客户端
+/> /iscsi/iqn.2018-07.cn.tedu.nsd1803/tpg1/acls create iqn.2018-07.cn.tedu.node2
+/> /iscsi/iqn.2018-07.cn.tedu.nsd1803/tpg1/acls create iqn.2018-07.cn.tedu.node3
+保存并退出
+/> saveconfig 
+/> exit
+
+配置node2为客户端
+安装软件包
+[root@node2 ~]# yum  install  -y  iscsi-initiator-utils
+客户端修改iqn名字
+[root@node2 ~]# vim /etc/iscsi/initiatorname.iscsi 
+InitiatorName=iqn.2018-07.cn.tedu.node2
+发现存储端，此时可以发现名字，但是不会多出硬盘
+[root@node2 ~]# iscsiadm --mode discoverydb --type sendtargets --portal 192.168.4.1 --discover
+登陆iscsi设备，出现新硬盘
+[root@node2 ~]# systemctl  restart  iscsi
+[root@node2 ~]# lsblk    ＃ 将会出现sda
+[root@node2 ~]# systemctl enable iscsi
+[root@node2 ~]# systemctl enable iscsid
+iscsi服务用于自动登陆，iscsid是守护进程
+安装mariadb-server，将sda分区、格式化，挂载到mariadb的工作目录下
+[root@node2 ~]# mount  /dev/sda1  /var/lib/mysql/
+[root@node2 ~]# chown mysql.mysql /var/lib/mysql/
+启动mariadb，创建库和表
+MariaDB [(none)]> create database nsd1803;
+MariaDB [(none)]> use nsd1803;
+MariaDB [nsd1803]> create table students (name varchar(20));
+MariaDB [nsd1803]> INSERT INTO students VALUES('zhouyu');
+

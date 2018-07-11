@@ -1,0 +1,43 @@
+NFS：实现网络共享的，用于unix-like（类unix）系统间的共享
+端口号是2049，基于RPC（远程过程调用，端口号111）服务。NFS只提供了共享功能，底层数据传输交给RPC服务。
+只读共享
+node1作为服务端
+（1）安装软件包
+[root@node1 ~]# yum install -y nfs-utils
+（2）创建共享目录
+[root@node1 ~]# mkdir  -pv  /nfsroot/nfsro
+[root@node1 ~]# cp /etc/hosts /nfsroot/nfsro
+修改配置文件
+[root@node1 ~]# vim /etc/exports
+/nfsroot/nfsro  *(ro)   ->允许所有地址以只读方式访问
+启动服务并验证
+[root@node1 ~]# systemctl start nfs
+[root@node1 ~]# showmount -e 192.168.4.1
+node3作为客户端
+创建挂载点
+[root@node3 ~]# mkdir /mnt/nsfshare
+查看共享，并挂载
+[root@node3 ~]# showmount  -e  192.168.4.1
+[root@node3 ~]# mount 192.168.4.1:/nfsroot/nfsro /mnt/nsfshare
+[root@node3 ~]# ls /mnt/nsfshare
+读写共享
+不管是NFS，还是SAMBA，还是FTP，只要是读写共享，必须注意本地权限和配置文件内的授权
+Node1作为服务器
+（1）创建用于读写目录
+[root@node1 ~]# mkdir -m 777 /nfsroot/nfsrw
+（2）修改配置文件说明
+[root@node1 ~]# vim /etc/exports
+/nfsroot/nfsro  *(ro)
+/nfsroot/nfsrw  192.168.4.*(rw,sync)
+（3）重新输出共享
+[root@node1 ~]# exportfs  -rv
+配置客户端
+创建挂载点
+[root@node3 ~]# mkdir /mnt/rwnfs
+（2）挂载，测试
+[root@node3 ~]# mount 192.168.4.1:/nfsroot/nfsrw /mnt/rwnfs
+[root@node3 ~]# echo 'hello world' > /mnt/rwnfs/hi.txt
+NFS选项
+(1)no_root_squash表示当root创建文件时，保留文件的属主属组还是root，默认写入到共享目录中的文件属主属组是nfsnobody
+/nfsroot/nfsrw  192.168.4.*(rw,sync,no_root_squash)
+(2)all_squash：作用是客户端任何用户写入的文件属主属组都是nfsnobody。
