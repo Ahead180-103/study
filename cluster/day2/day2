@@ -1,0 +1,167 @@
+1、集群分类：
+（1）高性能计算集群（HPC）
+（2）负载均衡集群（LB）
+（3）高可用集群（HA）
+LB和HA在企业中用的更多。
+2、服务器架构
+《大型网站技术架构》李志慧
+IBM：小型机
+ORACLE：数据库
+EMC存储：
+去IOE运动
+
+配置LAMP分离的DISCUZ论坛
+1、创建三台虚拟机并初始化
+Node1.tedu.cn 192.168.4.1 mysql
+Node2.tedu.cn 192.168.4.2 web1
+Node3.tedu.cn 192.168.4.3 web2
+2、配置node1为数据库服务器
+[root@node1 ~]# yum install -y mariadb-server
+[root@node1 ~]# systemctl start mariadb
+[root@node1 ~]# systemctl enable mariadb
+[root@node1 ~]# mysql
+MariaDB [(none)]> grant all on *.* to 'admin'@'192.168.4.%' identified by 'tedu.cn';
+3、配置node2节点为web服务器
+[root@node2 ~]# yum install -y httpd php php-mysql
+[root@node2 ~]# systemctl start httpd
+[root@node2 ~]# systemctl enable httpd
+[root@node2 ~]# unzip Discuz_X3.0_SC_UTF8.zip
+[root@node2 ~]# cp -r upload /var/www/html/bbs
+[root@node2 ~]# chown -R apache.apache /var/www/html/bbs
+访问http://192.168.4.2/bbs进行安装
+4、后台管理
+使用admin登陆后，访问“管理中心”。在后台管理界面，可以通过“论坛”更改版面设置。
+5、配置node3成为第二台web服务器
+[root@node3 ~]# yum install -y httpd php php-mysql
+[root@node3 ~]# systemctl start httpd
+[root@node3 ~]# systemctl enable httpd
+把node2的bbs打包拷贝到node3上解压到/var/www/html/下
+[root@node2 ~]# cd /var/www/html/
+[root@node2 html]# tar czf bbs.tar.gz bbs
+[root@node2 html]# scp bbs.tar.gz 192.168.4.3:/var/www/html/
+[root@node3 ~]# cd /var/www/html/
+[root@node3 html]# tar xzf bbs.tar.gz
+
+LVS: Linux虚拟服务器
+1、工作模式：
+（1）tun隧道模式：很少使用
+（2）nat模式：相对较少
+（3）dr模式：路由模式，应用最多
+（4）full nat：在很大规模环境下使用
+2、调度算法
+（1）轮询rr
+（2）加权轮询wrr
+（3）最少连接lc
+（4）加权最少连接wlc
+（5）基于局部的最少连接lblc
+（6）带复制的基于局部的最少连接lblcr
+（7）源地址散列sh
+（8）目标地址散列dh
+（9）期望的最少的延迟sed
+（10）最少队列调度nq
+
+配置LVS－NAT模式
+1、修改两台web服务器，为其添加网关192.168.4.4
+[root@node2 html]# ifdown eth0; ifup eth0
+2、创建虚拟机node4作为调度器
+Node4.tedu.cn eth0:192.168.4.4 eth2:201.1.1.4
+3、打开node4的路由转发功能（RHEL7默认已经打开，可以跳过）
+[root@node4 ~]# sysctl -a | grep ip_forward
+[root@node4 ~]# echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+[root@node4 ~]# sysctl -p
+4、配置node4作为LVS服务器
+[root@node4 ~]# yum install -y ipvsadm
+(1)创建虚拟服务器
+[root@node4 ~]# ipvsadm -A -t 201.1.1.4:80 -s rr
+（2）向虚拟服务器中加入real server
+-m表示NAT模式，-w设置权重，-t是TCP
+[root@node4 ~]# ipvsadm -a -t 201.1.1.4:80 -r 192.168.4.2 -m
+[root@node4 ~]# ipvsadm -a -t 201.1.1.4:80 -r 192.168.4.3 -m -w 2
+（3）查看
+[root@node4 ~]# ipvsadm -Ln
+（4）验证：访问http://201.1.1.4/bbs
+在两台服务器上制作不同的主页，以便访问时可以区分。
+[root@room8pc16 kvms_ansi]# curl http://201.1.1.4
+5、相关命令
+从虚拟服务器中删除RIP
+[root@node4 ~]# ipvsadm -d -t 201.1.1.4:80 -r 192.168.4.3
+删除虚拟服务器
+[root@node4 ~]# ipvsadm -D -t 201.1.1.4:80
+修改调度算法为WRR
+[root@node4 ~]# ipvsadm -E -t 201.1.1.4:80 -s wrr
+每隔1秒钟运行ipvsadm -Ln
+[root@node4 bin]# watch -n1 ipvsadm -Ln
+
+配置LVS－DR模式
+1、清除eth2的IP地址和LVS规则
+[root@node4 bin]# ifdown eth2
+[root@node4 bin]# ipvsadm -D -t 201.1.1.4:80
+[root@node4 bin]# kill %1 ->杀掉后台1号作业
+2、在调度器的物理网卡上添加vip
+[root@node4 bin]# cd /etc/sysconfig/network-scripts/
+[root@node4 network-scripts]# cp ifcfg-eth0{,:0}
+[root@node4 network-scripts]# vim ifcfg-eth0:0
+TYPE=Ethernet
+BOOTPROTO=none
+NAME=eth0:0
+DEVICE=eth0:0
+ONBOOT=yes
+IPADDR=192.168.4.100
+PREFIX=24
+[root@node4 network-scripts]# ifup eth0:0
+3、在real server的lo上配置vip
+[root@node2 html]# cd /etc/sysconfig/network-scripts/
+[root@node2 network-scripts]# cp ifcfg-lo{,:0}
+[root@node2 network-scripts]# vim ifcfg-lo:0
+DEVICE=lo:0
+IPADDR=192.168.4.100
+子网掩码必须是4个255，否则其他主机启动时，都是地址被占用
+NETMASK=255.255.255.255
+NETWORK=192.168.4.100
+BROADCAST=192.168.4.100
+ONBOOT=yes
+NAME=lo:0
+[root@node2 network-scripts]# ifup lo:0
+4、在real server上修改内核参数，使得客户端发送到VIP的请求只有调度服务器响应，real server(web服务器)不要要响应。
+[root@node2 ~]# sysctl -a | grep arp_ig
+[root@node2 ~]# echo "net.ipv4.conf.all.arp_ignore = 1" >> /etc/sysctl.conf
+[root@node2 ~]# echo "net.ipv4.conf.lo.arp_ignore = 1" >> /etc/sysctl.conf
+[root@node2 ~]# sysctl -a | grep arp_ann
+[root@node2 ~]# echo "net.ipv4.conf.all.arp_announce = 2" >> /etc/sysctl.conf
+[root@node2 ~]# echo "net.ipv4.conf.lo.arp_announce = 2" >> /etc/sysctl.conf
+[root@node2 ~]# sysctl -p
+5、创建规则，默认LVS采用DR模式，也可以明确使用-g
+[root@node4 ~]# ipvsadm -A -t 192.168.4.100:80 -s lc
+[root@node4 ~]# ipvsadm -a -t 192.168.4.100:80 -r 192.168.4.2
+[root@node4 ~]# ipvsadm -a -t 192.168.4.100:80 -r 192.168.4.3 -g
+6、配置服务
+[root@node4 ~]# touch /etc/sysconfig/ipvsadm
+[root@node4 ~]# systemctl start ipvsadm
+[root@node4 ~]# systemctl enable ipvsadm
+
+
+
+
+
+#!/bin/bash
+
+VIP=201.1.1.4:80
+RIP1=192.168.4.2
+RIP2=192.168.4.3
+
+while :
+do
+    for IP in $RIP1 $RIP2
+    do
+        curl http://$IP &> /dev/null
+        web_stat=$?
+        ipvsadm -Ln | grep $IP &> /dev/null
+        web_in_lvs=$?
+        if [ $web_stat -ne 0 -a $web_in_lvs -eq 0 ]; then
+            ipvsadm -d -t $VIP -r $IP
+        elif [ $web_stat -eq 0 -a $web_in_lvs -ne 0 ]; then
+            ipvsadm -a -t $VIP -r $IP -m
+        fi
+    done
+    sleep 1
+done
