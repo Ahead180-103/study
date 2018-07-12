@@ -1,0 +1,161 @@
+HTTP协议响应的状态码：
+200：OK
+301：重定向
+404：not found
+403：forbidden
+501：Internal Error
+
+
+HAProxy：
+1、它的工作原理是Proxy代理。客户端把请求发送到HAProxy后，HAProxy替用户发送请求到web服务器，web服务器响应HAProxy，把页面发给HAProxy。HAProxy再把页面发给客户端。
+2、拓扑与LVS－DR完全一样。因为LVS－DR配置和HAProxy没有影响，也就不需要清理了。
+3、node4作为调度器
+[root@node4 ~]# yum install -y haproxy
+4、 修改配置文件
+[root@node4 ~]# vim /etc/haproxy/haproxy.cfg 
+把main frontend which proxys to the backends后面的配置全部删除
+listen stats
+    bind 0.0.0.0:1080   # 监控页面的端口号
+    stats refresh 30s      # 页面自动刷新时间是30秒
+    stats uri /monitor    # 页面网址
+    stats realm HaManager
+    stats auth admin:admin   # 用户名：密码
+
+listen myweb 0.0.0.0:80
+    cookie SERVERID rewrite
+    balance roundrobin   # 调度算是rr
+    server web1 192.168.4.2:80 cookie a1i1 check inter 2000 rise 2 fall 5    #每2000ms检查一次服务器，2次成功是好的，5次失败表示故障
+server web2 192.168.4.3:80 cookie a1i2 check inter 2000 rise 2 fall 5
+5、启动服务
+[root@node4 ~]# systemctl start haproxy
+
+
+日志
+1、 构成        # man  5  rsyslog.conf
+Facility.priority 相当于是  服务.优先级
+Facility可以是这些关键字：auth, authpriv, cron, daemon, kern, lpr, mail, mark, news,  security ，syslog,   user,  uucp 以及local0到local7
+Local0到local7是预留出来的接口，供第三方应用调用。
+Priority可以使用的关键字：debug, info,notice, warning, warn ，err,  error，crit, alert,emerg, panic 
+Debug是最不严重的级别，panic是最严重的级别。如果日志记录优先级是info，表示比info严重的日志都需要记录。
+
+配置haproxy日志
+1、配置本机接受通过网络发来的日志
+[root@node4 ~]# vim  /etc/rsyslog.conf 
+# Provides UDP syslog reception
+$ModLoad imudp
+$UDPServerRun 514
+# Provides TCP syslog reception
+$ModLoad imtcp
+$InputTCPServerRun 514
+[root@node4 ~]# systemctl restart rsyslog
+2、 查看日志
+[root@node4 ~]# tail -f /var/log/messages 
+访问haproxy调度器，可以看到日志信息。
+
+
+VRRP：虚拟冗余路由协议，IETF公共标准
+HSRP：热备份路由协议，，思科私有
+
+
+搭建高可用的web集群
+1、 node2和node3提供web服务。由于没有过多的用户访问，只有一台服务器工作即可，另一台只是起到备份份份份作用。
+2、 安装服务
+[root@node2 ~]# yum install -y keepalived
+3、 修改配置文件
+[root@node2 ~]# vim /etc/keepalived/keepalived.conf 
+   # vrrp_strict
+vrrp_instance VI_1 {
+    state MASTER    #辅助写BACKUP
+    interface eth0
+    virtual_router_id 51    #虚拟路由器ID号
+    priority 150      #优先级
+    advert_int 1      # 心跳消息发送间隔
+    authentication {     # 集群成员共享密码
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        192.168.4.200    # vip
+    }
+}
+Heartbeat：心跳
+[root@node2 ~]# systemctl start keepalived
+4、 查看、验证
+[root@node2 ~]# ip  address  show  eth0
+
+
+双主配置：两台主机，两个服务，每个主机是一个服务的主
+
+
+
+搭建高可用、负载均衡的web集群
+1、新建node5虚拟机，作为额外的lvs服务器。虽然有两台调度器，也是DR模式。
+2、在web服务器的lo上配置VIP
+3、调整web服务器的内核参数
+4、调度器上不要再手工的为eth0配置VIP了。因为VIP出现在活跃的调度器上，活跃设备由keepalived决定。应该把已经存在的调度器VIP移除。
+[root@node4 ~]# ifdown eth0:0
+[root@node4 ~]# mv /etc/sysconfig/network-scripts/ifcfg-eth0:0 ~
+5、 把node4上的haproxy停掉
+[root@node4 ~]# systemctl stop haproxy
+6、将node4上的lvs规则清掉。因为lvs规则将由keepalived配置文件指定。
+[root@node4 ~]# ipvsadm -D -t 192.168.4.100:80
+7、 在node5上安装ipvsadm
+[root@node5 ~]# yum install -y ipvsadm
+8、在node4/5安装keeaplived
+[root@node4 ~]# yum install -y keepalived 
+9、 在node4上配置keepalived
+[root@node4 ~]# vim /etc/keepalived/keepalived.conf 
+global_defs {
+   notification_email {
+     root@localhost   # 收件人
+   }
+   notification_email_from admin@tedu.cn  # 发件人
+   smtp_server 127.0.0.1   # 邮件服务器地址
+   smtp_connect_timeout 30
+   router_id LVS_DEVEL
+   vrrp_skip_check_adv_addr
+   # vrrp_strict
+   vrrp_garp_interval 0
+   vrrp_gna_interval 0
+}
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0 
+    virtual_router_id 51
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }   
+    virtual_ipaddress {
+        192.168.4.100
+    }   
+}
+virtual_server 192.168.4.100 80 {
+    delay_loop 6
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 50
+    protocol TCP
+
+    real_server 192.168.4.2 80 {
+        weight 1
+        TCP_CHECK {
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+    real_server 192.168.4.3 80 {
+        weight 1
+        TCP_CHECK {
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+}
+10、 启动服务验证
+[root@node4 ~]# systemctl restart keepalived.service 
+
