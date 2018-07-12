@@ -139,8 +139,8 @@ NAME=lo:0
 [root@node4 ~]# systemctl start ipvsadm
 [root@node4 ~]# systemctl enable ipvsadm
 
-
-
+动态查看
+watch -n1 ipvsadm -Ln
 
 
 #!/bin/bash
