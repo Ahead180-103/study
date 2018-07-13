@@ -1,0 +1,269 @@
+第3天for循环
+加备注：
+-i0.1  间隔0.1秒ping一次
+-c2		设置仅ping2次
+-W1		等待对方回应的时间，1秒不回应，直接认为不通
+
+第4天：
+字串截取备注开始位置
+
+1个8位随机密码
+字符替换的案例【手机号】
+basedir[delete]
+把var修改为汉字[变量]
+
+批量修改扩展名：
+准备素材：touch {a,b,c,d,e,f,g}.txt
+
+for i in `ls *.txt`
+do
+    mv $i  ${i%.*}.doc
+done
+
+for i in `ls *.$1`
+do
+    mv $i  ${i%.*}.$2
+done
+
+xx
+字串赋初始值的案例
+
+echo ${nb:-123}
+nb=xx
+echo ${nb:-123}
+
+    read -p "请输入用户名:"  user
+    read -p "请输入密码:"  pass
+    if [ -z $user ];then
+        echo "必须输入用户名"
+        exit
+    fi
+    pass=${pass:-123456}
+    useradd $user
+    echo $pass |passwd --stdin $user 
+
+
+原文如下[错误]：
+#!/bin/bash
+read  -p   "请输入用户名:"   user
+read  -p   "请输入用户名:"   pass
+user=${pass:-123456}                    //如果用户没有输入密码，则默认密码为123456
+useradd  $user
+echo "123456"  | passwd   --stdin   $pass
+
+
+expect引入的案例：
+发邮件的命令mail[交互]
+mail -s  error  root [交互]
+
+echo "abc" | mail -s error root
+vim test.sh
+
+mail -s error root <<EOF
+    hello world
+    test file
+    hehe
+EOF
+
+vim test.sh  版本1
+#!/bin/bash
+expect <<EOF
+spawn ssh 172.25.0.$i
+expect "password"  {send "redhat\n"}
+expect "#"         {send "useradd tom\n"}
+expect "#"         {send "exit\n"}
+EOF
+
+
+vim test.sh  版本2
+#!/bin/bash
+for i in 10 11
+do
+expect <<EOF
+spawn ssh 172.25.0.$i
+expect "password"  {send "redhat\n"}
+expect "#"         {send "useradd 李宁\n"}
+expect "#"         {send "exit\n"}
+EOF
+done
+
+ssh -o StrictHostKeyChecking=no server0
+
+1.正则表达式[特殊符号来表达的一种形式]
+2.计算机的通用表达式
+   
+^                  开始
+$                  行尾
+[]                  集合,取任意单个字符
+[^]                对集合取反
+.                   任意单个字符
+*                  匹配前一个字符任意次[*不允许单独使用]
+.*                 通配符，匹配所有
+\{n,m\}   匹配前一个字符n到m次
+\{n,\}    匹配前一个字符n次以及以上
+\{n\}     匹配前一个字符n次
+ftp://172.40.50.118/share/shell/
+regular_express.txt  素材
+regular.pdf          题目
+grep命令支持正则
+
+
+
+
+
+
+
+
+
+++++++++++++++++++++++++++++++
+第5天：
+步骤三：sed工具的p、d、s输出操作案例
+
+s/old/new/g
+
+vim  test.txt    新建素材
+2017 2011 2018
+2017 2017 2024
+2017 2017 2017
+
+#sed 's/2017/xxxx/'   test.txt
+#sed 's/2017/xxxx/g'  test.txt
+#sed 's/2017/xxxx/2'  test.txt
+#sed 's/2017//2'      test.txt
+
+对/etc/passwd文件
+把/bin/bash  替换成  /sbin/sh
+
+sed 's/旧/新/'     /etc/passwd
+
+#sed  's/\/bin\/bash/\/sbin\/sh/' /etc/passwd
+#sed  's,/bin/bash,/sbin/sh,'  /etc/passwd
+#sed  's#/bin/bash#/sbin/sh#'  /etc/passwd
+
+#sed   's9\9\98\99\976\99'  文件
+
+删除vsftpd
+
+
+
+总结知识点：
+#sed  [选项]   '条件指令'     文件
+选项:
+    -n 屏蔽默认输出
+    -r 支持扩展正则
+    -i 修改源文件
+条件：
+    行号 4   4,5   4~2   4,+10
+    /正则/
+
+指令：
+    p   打印
+    d   删除
+    s   替换s/旧/新/g
+    a   追加
+    i   插入
+    c   替换行
+    r   读取其他文件
+    w   另存为
+    h,H 
+    g,G
+
+#sed  '2r /etc/hosts'  test.txt
+把/etc/hosts的内容导入test.txt里第2行后面
+
+#sed  '1w  /root/new.txt'  test.txt
+把test.txt的第1行另存为/root/new.txt
+new.txt没有时，会被自动创建出来
+
+
+
+
+
+
+
+
+第6天
+
+
+
+
+删除：
+[root@svr5 ~]# awk -F ":" '{print $1  ","  $7}' /etc/passwd
+
+
+
+
+
+
+
+
+可以打印变量或常量
+#awk -F: '{print $1,"的解释器是:",$7}'  /etc/passwd
+
+
+awk -F: '{print NR,NF}' /etc/passwd
+注释：NR是当前行的行号
+     NF是当前行的列数
+
+输出输出包含root
+
+
+2）使用数值/字符串比较设置条件
+>  >=  <  <=   ==   !=
+
+
+
+awk -F: '$3>10 && $3<20'    /etc/passwd
+
+awk -F: '$3>1000 || $3<10'  /etc/passwd
+结果不包括1000，不包括10
+
+
+
+
+
+利用awk提取
+本机的网络流量
+根分区剩余容量
+获取远程失败的IP地址
+
+awk [选项]  '[条件]{指令}'   文件
+
+awk [选项]  'BEGIN{指令} {指令} END{指令}'  
+
+BEGIN{ } 行前处理，读取文件内容前执行，指令执行1次 
+{指令}  逐行处理，读取文件过程中执行，指令执行n次
+END{ } 行后处理，读取文件结束后执行，指令执行1次 
+
+#awk -F: 'BEGIN{x=0} 
+          /bash$/{x++} 
+          END{print x}'   /etc/passwd  
+
+#awk -F:  'BEGIN{print "用户名","UID","家目录"} 
+           {print $1,$3,$6}
+           END{print "总行数:",NR}'  /etc/passwd
+
+   | column -t
+
+
+
+
+
+第7天：案例（不全）
+
+PPT（大纲，锁-->启动脚本）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
