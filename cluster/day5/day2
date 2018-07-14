@@ -1,0 +1,118 @@
+Ceph实战：
+安装KVM虚拟机，使用ceph存储提供的镜像作为硬盘
+1、 创建名为vm1-image的镜像，大小10GB
+[root@node6 ~]# rbd create vm1-image --size 10G --image-feature layering 
+[root@node6 ~]# rbd info vm1-image
+[root@node6 ~]# qemu-img info rbd:rbd/vm1-image
+2、 将物理主机作为客户端，安装软件包，拷贝配置文件
+[root@room8pc16 nsd2018]# yum install -y ceph-common
+[root@node1 ceph-clu]# scp /etc/ceph/ceph.c* 192.168.4.254:/etc/ceph/
+3、 正常创建一台KVM虚拟机，取名为myrhel7。向导结束之后，将其强制关机即可。
+4、 导出myrhel7虚拟的声明文件，将虚拟删掉。
+[root@room8pc16 nsd2018]# virsh dumpxml myrhel7 > /tmp/myrhel7.xml
+5、 虚拟机使用CEPH存储，需要认证。方式是虚拟先生成secret，再将secret与CEPH账户映射
+（1） 编写账户信息文件
+[root@room8pc16 nsd2018]# vim /tmp/secret.xml
+<secret ephemeral='no' private='no'> 
+    <usage type='ceph'>         
+        <name>client.admin secret</name> 
+    </usage>                    
+</secret>
+（2） 生成secret
+[root@room8pc16 nsd2018]# virsh secret-define --file /tmp/secret.xml
+[root@room8pc16 nsd2018]# virsh secret-list  查看secret
+
+6、 将虚拟机软件的secret和ceph的管理员用户关联
+（1） 查看管理员的密钥
+[root@room8pc16 nsd2018]# cat /etc/ceph/ceph.client.admin.keyring 
+（2） 关联secret和ceph的管理员
+[root@room8pc16 nsd2018]# virsh secret-set-value  --secret 60a71cb8-1c4f-4b14-9100-80c6355098eb --base64 AQBFS0hbHuSGIBAAUErs4XIBDWEAXGHLEpcrOw==
+7、 修改虚拟机的配置文件/tmp/myrhel7.xml，把管理员信息写到该文件中，并指定虚拟机磁盘使用ceph的镜像
+[root@room8pc16 nsd2018]# vim /tmp/myrhel7.xml 
+    <disk type='network' device='disk'>
+      <driver name='qemu' type='raw'/>
+      <auth username='admin'>
+        <secret type='ceph' uuid='60a71cb8-1c4f-4b14-9100-80c6355098eb'/>
+      </auth>
+      <source protocol='rbd' name='rbd/vm1-image'>
+        <host name='192.168.4.1' port='6789'/>
+      </source>
+      <target dev='vda' bus='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
+    </disk>
+8、 利用xml文件生成虚拟机
+[root@room8pc16 nsd2018]# virsh define /tmp/myrhel7.xml
+9、启动虚拟机时，不能直接安装，需要在虚拟机设置中连接光盘文件，并且设置启动选项，将光盘设置为第一启动介质。
+
+
+cephFS
+它可以像NFS或SAMBA那样，提供共享文件夹，客户端通过挂载目录的方式使用CEPH的存储。
+1、 cephFS需要一台MDS元数据服务器node4
+2、 在node4上安装软件包
+[root@node4 ~]# yum install -y ceph-mds
+3、 在node1上配置node4为mds服务器
+[root@node1 ~]# cd ceph-clu/
+[root@node1 ceph-clu]# ceph-deploy mds create node4
+4、 将管理密钥同步到mds服务器
+[root@node1 ceph-clu]# ceph-deploy admin node4
+5、 创建两个池，一个名为cephfs_data用于存储数据，一个名为cephfs_metadata用于存储元数据
+[root@node1 ceph-clu]# ceph osd pool create cephfs_data 128
+[root@node1 ceph-clu]# ceph osd pool create cephfs_metadata 128
+128表示PG的数目是128。PG是规置组，文件存到PG中，PG存在池中。
+6、 创建名为myfs1的文件系统
+[root@node1 ceph-clu]# ceph fs new myfs1 cephfs_metadata cephfs_data
+7、 查看状态
+[root@node1 ceph-clu]# ceph mds stat
+[root@node1 ceph-clu]# ceph fs ls
+8、 客户端使用
+[root@node6 ~]# mkdir /mnt/cephfs
+[root@node6 ~]# cat /etc/ceph/ceph.client.admin.keyring 
+[root@node6 ~]# mount -t ceph 192.168.4.1:6789:/ /mnt/cephfs/ -o name=admin,secret=AQBFS0hbHuSGIBAAUErs4XIBDWEAXGHLEpcrOw==
+[root@node6 ~]# df -h /mnt/cephfs
+
+
+
+Ceph对象存储
+1、 使用ceph对象存储，需要RGW，即ceph网关。配置node5是RGW
+2、 可以在管理节点上为node5进行安装和配置
+[root@node1 ceph-clu]# ceph-deploy install --rgw node5
+3、将配置文件、密钥文件同步到node5
+[root@node1 ceph-clu]# ceph-deploy admin node5
+4、在node5上启动rgw服务
+[root@node1 ceph-clu]# ceph-deploy rgw create node5
+5、 rgw内建了一个名为civetweb的web服务器，这个服务器与apache/nginx类似。既然是web服务，所以使用80端口更为方便。
+为了应用简便，可以将默认的7480端口改为80端口
+[root@node5 ~]# vim /etc/ceph/ceph.conf 追加以下内容
+[client.rgw.node5]
+host = node5
+rgw_frontends = "civetweb port=80"
+[root@node5 ~]# systemctl restart ceph-radosgw\*
+6、 验证端口是否已经修改成功
+[root@node6 ~]# curl http://192.168.4.5
+7、在node6上安装客户端软件
+[root@node6 ~]# rpm  -ihv  s3cmd-2.0.1-1.el7.noarch.rpm 
+8、 创建ceph对象存储用户
+[root@node5 ~]# radosgw-admin user create --uid="zzg" --display-name="zzg"
+注意access_key和secret_key
+9、 配置s3客户端
+[root@node6 ~]# s3cmd  --configure
+Access Key: CH0ZFQE4YLA8US9J2ZGO
+Secret Key: Jh2xzWqvAP0iLQD5um1NBbUsN1B4kAZUFOukmALd
+Default Region [US]:  注意不要修改
+S3 Endpoint [s3.amazonaws.com]: 192.168.4.5
+[%(bucket)s.s3.amazonaws.com]: %(bucket)s.192.168.4.5
+Use HTTPS protocol [Yes]: No
+Test access with supplied credentials? [Y/n] y
+10、 客户端测试
+[root@node6 ~]# s3cmd  ls   查看内容
+创建一个bucket，相当于是文件夹，名称要求为xxx_yyy格式
+[root@node6 ~]# s3cmd  mb  s3://my_dir  
+上传文件
+[root@node6 ~]# s3cmd put /etc/hosts s3://my_dir
+[root@node6 ~]# s3cmd ls s3://my_dir  查看
+下载文件到/tmp，下载后的文件改名为zhuji
+[root@node6 ~]# s3cmd get s3://my_dir/hosts /tmp/zhuji
+删除文件
+[root@node6 ~]# s3cmd del s3://my_dir/hosts
+
+
