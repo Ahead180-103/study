@@ -143,5 +143,26 @@ guestmount -a /var/lib/libvirt/image/node.qcow2 -i /mnt/node/
 cd /mnt/node/
 chroot /mnt/node/  ********
 
+• 添加 Console 配置及初除磁盘分区里的个性化信息
+vim /etc/default/grub
 
+GRUB_CMDLINE_LINUX="biosdevname=0 net.ifnames=0
+console=ttyS0,115200n8"
+GRUB_DISABLE_LINUX_UUID="true"
+GRUB_ENABLE_LINUX_LABEL="true“
+– 重新生成 grub.cfg
+grub2-mkconfig -o /boot/grub2/grub.c
+
+
+初除网络配置里的个性化信息
+vim /etc/sysconfig/network-scripts/ifcfg-eth0
+
+DEVICE="eth0"
+ONBOOT="yes“
+IPV6INIT="no"
+TYPE="Ethernet"
+BOOTPROTO=“dhcp“
+– 禁用空路由
+– /etc/sysconfig/network
+NOZEROCONF="yes"
 
