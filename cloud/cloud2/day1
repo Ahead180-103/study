@@ -1,0 +1,67 @@
+#--------------openstack-----------------#
+物理机 == 真机
+虚拟机
+
+物理机：
+    安装 bind（dns）服务
+    安装 chrond（ntp）服务
+
+虚拟机：
+    /etc/resolv.conf 配置 物理机的IP
+    nameserver 192.168.1.254
+    /etc/chrony.conf 配置指向物理机的IP
+    server 192.168.1.254 iburst
+
+    验证：
+    ping  www.baidu.com
+    chronyc sources -v
+
+虚拟机 2 台，openstack(8G) ,nova(6G)
+openstack: 
+    pvcreate /dev/vdb
+    vgcreate cinder-volumes /dev/vdb
+
+openstack, nova:
+    yum install -y qemu-kvm \
+                   libvirt-client \
+                   libvirt-daemon \
+                   libvirt-daemon-driver-qemu \
+                   python-setuptools
+
+openstack:
+    yum install -y openstack-packstack
+    packstack --gen-answer-file answer.ini
+    编辑 answer.ini
+配置默认密码
+11:  CONFIG_DEFAULT_PASSWORD=Taren1
+设置禁用 swift (对象存储) 模块
+42:  CONFIG_SWIFT_INSTALL=n
+NTP 服务器地址
+75:  CONFIG_NTP_SERVERS=192.168.1.254
+计算节点IP地址
+98:  CONFIG_COMPUTE_HOSTS=192.168.1.19
+需要配置vxlan网络的 IP 地址
+102: CONFIG_NETWORK_HOSTS=192.168.1.19
+禁用自动创建 cinder-volumns 卷组
+554: CONFIG_CINDER_VOLUMES_CREATE=n
+设置网络支持协议
+840: CONFIG_NEUTRON_ML2_TYPE_DRIVERS=flat,vxlan
+设置组播地址
+876: CONFIG_NEUTRON_ML2_VXLAN_GROUP=239.1.1.5
+设置虚拟交换机
+910: CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=physnet1:br-ex
+设置虚拟交换机所连接的物理网卡
+921: CONFIG_NEUTRON_OVS_BRIDGE_IFACES=br-ex:eth0
+设置隧道网络使用的网卡
+936: CONFIG_NEUTRON_OVS_TUNNEL_IF=eth1
+禁用测试的DEMO
+1179:CONFIG_PROVISION_DEMO=n
+
+    保持配置文件，安装 openstack
+    packstack --answer-file=answer.ini
+
+
+    horizon 软件配置 bug
+    修改 /etc/httpd/conf.d/15-horizon_vhost.conf
+    添加 WSGIApplicationGroup %{GLOBAL}
+    重新载入配置 apachectl graceful
