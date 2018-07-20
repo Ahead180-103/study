@@ -1,0 +1,70 @@
+一句话问答：
+企业里怎么管理 Linux，那么多Linux 怎么处理？
+使用终端软件 securetty  xshell 
+
+企业里怎么管理 Windows
+远程桌面 mstsc /admin
+
+什么是跳板机（堡垒主机）？
+
+PV 是什么
+PV：即Page View, 即页面浏览量或点击量，用户每次刷新即被计算一次。
+UV是什么
+　　UV(独立访客)：即Unique Visitor,访问您网站的一台电脑客户端为一个访客。00:00-24:00内相同的客户端只被计算一次。
+　　IP(独立IP)：指独立IP数。00:00-24:00内相同IP地址之被计算一次。
+hits 是什么
+    点击量，你的一个页面中的某个元素被用户点击打开的次数
+
+SEO是什么
+Search Engine Optimization，中文译为搜索引擎优化，是指在了解搜索引擎自然排名机制的基础上，对网站进行内部及外部的调整优化，改进网站在搜索引擎中的关键词自然排名，获得更多流量，从而达成网站销售及品牌建设的目标。
+SEM是什么
+Search Engine Marketing，中文译为搜索引擎营销，是指在搜索引擎上推广网站，提高网站可见度，从而带来流量的网络营销活动。
+
+3. SEM包括SEO，PPC（Pay Per Click，即按点击付费，如百度竞价排名等），付费登录等形式，其中以SEO和PPC最为常见。
+
+4. SEO和SEM两者目的相同，都是为了是网站销售和品牌建设；不同的是实现方式：SEO是通过技术手段使获得好的自然排名；SEM可以通过技术手段（SEO）和付费手段（PPC）等
+
+ssh 登录特别慢
+UseDNS no
+
+Linux 查看哪些进程占用磁盘IO
+python脚本工具，使用方法如：iotop
+
+查看系统占用 cpu 和内存最多的程序
+ps -eo %mem,ucmd|awk '{A[$2]+=$1}END{for(a in A)if(A[a]>0)printf("%.2f\t%s\n",A[a],a)}'
+ps -eo %cpu,ucmd|awk '{A[$2]+=$1}END{for(a in A)if(A[a]>0)printf("%.2f\t%s\n",A[a],a)}'
+
+查看连接最多的主机
+ss -ant|awk '$1~/ESTAB/{A[gensub(":.*","","",$NF)]++}END{for(a in A)print a"\t"A[a]}'
+
+lsof
+lsof全名list opened files，也就是列举系统中已经被打开的文件。linux环境中，任何事物都是文件，设备是文件，目录是文件，甚至sockets也是文件。所以，用好lsof命令，对日常的linux管理非常有帮助。
+lsof是linux最常用的命令之一，通常的输出格式为：
+
+常见包括如下几个字段：
+1、COMMAND默认以9个字符长度显示的命令名称。可使用+c参数指定显示的宽度，若+c后跟的参数为零，则显示命令的全名(-c)
+2、PID 进程的ID号(-p )
+3、TID 如果是一个线程，显示线程 ID
+4、USER 命令的执行UID或系统中登陆的用户名称。(-u)
+5、FD 是文件描述符 File Descriptor number(-d)
+6、TYPE 类型
+7、DEVICE 使用character special、block special表示的设备号
+8、SIZE/OFF 文件的大小，如果不能用大小表示的，会留空。
+9、NODE 本地文件的inode id 
+10、挂载点和文件的全路径（链接会被解析为实际路径），或者连接双方的地址和端口、状态等
+
+使用样例：
+lsof   urfile  显示这个文件被哪个程序调用
+lsof  -c  systemd  显示systemd 进程使用了哪些文件
+lsof  -p pid  使用  pid 显示进程使用了哪些文件
+lsof  -i:22  显示22端口被哪些ip使用
+lsof  +d  /root   显示 root 下被打开的文件，不递归
+lsof  +D  /root   同上，递归
+lsof  -u  username   显示用户打开的文件
+
+不能 umount
+lsof -c '/^bash/i' -a -d cwd  /usr/path
+
+没有释放空间
+lsof |grep deleted
+黑科技，可以在某些情况恢复删除文件
