@@ -1,0 +1,25 @@
+关于 /root/keystone_admin 文件的注意事项：
+  1、该文件只是一个文本，里面记录了 admin 的用户名和密码，与认证无关
+  2、不能通过修改该文件达到修改 admin 密码的目的
+  3、修改 admin 密码请使用 web 页面登录后，在web页面中修改
+     修改后，keystone_admin 中的密码通用要修改成新的密码才可以继续使用
+  4、该文件可以作为命令行的登录文件使用，使用方式 source ~/keystone_admin
+  5、如果你安装完成 openstack 后，没有修改过 admin 的密码
+     keystone_admin 文件不小心被更改了
+     我们可以通过查找应答文件 answer.ini 中的变量 CONFIG_KEYSTONE_ADMIN_PW 来找到默认安装密码
+
+#---------------------nova安装------------------#
+1 检查nova主机能否与 openstack 互相ping 通(两块网卡都要测试)
+2 检查 selinux 是否禁用 (sestatus)
+3 检查 firewalld 是否卸载 (rpm -qa|grep firewalld)
+4 检查 NetworkManager 是否卸载 (rpm -qa|grep NetworkManager)
+5 检查 yum 源 (yum repolist   10731包)
+6 检查 系统 yum 源是否导入公钥 (gpgcheck=1)
+7 检查 时间服务器 (chronyc sources -v)
+8 检查 openstack 和 本机的主机名 是否能 ping 通
+
+openstack:
+  编辑 answer.ini
+98:  CONFIG_COMPUTE_HOSTS=192.168.1.19,192.168.1.18
+102: CONFIG_NETWORK_HOSTS=192.168.1.19,192.168.1.18
+  packstack --answer-file=answer.ini
