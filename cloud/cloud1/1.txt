@@ -1,0 +1,230 @@
+0 基本原则
+物理机
+    selinux  必须禁用
+    firewalld   必须停止
+    systemctl  stop  firewalld
+    systemctl  mask  firewalld
+    NetworkManager  -- 不管
+虚拟机模板
+    selinux     必须禁用
+    firewalld   必须卸载
+    NetworkManager  必须卸载
+ifcfg-eth0  配置文件
+DEVICE="eth0"
+ONBOOT="yes"
+IPV6INIT="no"
+TYPE="Ethernet"
+BOOTPROTO="dhcp"
+
+
+
+创建虚拟机 node1
+1、创建虚拟机配置文件
+     拷贝模板到 node1.xml ，修改  name 字段，修改 磁盘文件
+2、创建虚拟机磁盘文件
+cd /var/lib/libvirt/images
+qemu-img create -b node.qcow2 -f qcow2 node1.img
+
+3、启动虚拟机并测试
+cd /etc/libvirt/qemu
+virsh define node1.xml
+virsh start node1
+virsh console node1
+
+4、 远程连接
+virsh -c qemu+ssh://root@172.40.53.67/system
+virt-manager 
+openstack  安装环境准备
+物理机：
+    安装配置  dns，能作为转发 dns 服务器即可
+    安装配置 chronyd server 
+    添加一个网桥  vbr1
+
+配置两个虚拟机
+    第一个 安装管理节点最少  8G 内存
+               单独添加一块硬盘给 openstack cinder 使用 20G
+               单独添加一块 网卡 使用 vbr1
+    第二个 安装 nova 节点 最少 5G 内存
+               单独添加一块 网卡 使用 vbr1
+
+yum install cloud-utils-growpart
+growpart  /dev/vda  1
+xfs_growfs  /
+
+1 物理机安装配置 dns
+yum install -y bind-chroot
+修改 /etc/named.conf
+listen-on port 53 { 192.168.1.254; };
+//listen-on-v6 port 53 { ::1; };
+allow-query     { any; };
+forwarders { 202.106.196.115; };
+dnssec-enable no;
+dnssec-validation no;
+2 安装配置时间服务器
+yum install -y chrony
+修改 /etc/chrony.conf
+server ntp1.aliyun.com iburst
+bindacqaddress 0.0.0.0
+allow 0/0
+
+chronyc  sources  -v
+
+虚拟机1
+最少  8G 内存
+<memory unit='GB'>9</memory>
+<currentMemory unit='GB'>9</currentMemory>
+添加硬盘
+qemu-img create -f qcow2 /var/lib/libvirt/images/disk.img 20G
+<disk type='file' device='disk'>
+    <driver name='qemu' type='qcow2'/>
+    <source file='/var/lib/libvirt/images/disk.img'/>
+    <target dev='vdb' bus='virtio'/>
+</disk>
+添加网卡
+<interface type='network'>
+    <source network='vbr1'/>
+    <model type='virtio'/>
+</interface>
+gpgcheck=1
+
+yum clean all
+
+下载  RPM-GPG-KEY-CentOS-7
+
+rpm --import RPM-GPG-KEY-CentOS-7
+
+yum install lftp lrzsz
+
+挂载
+RHEL7OSP-10.iso
+RHEL7-extras.iso
+
+[ooxx]
+name="ooxx"
+bashurl=ftp://192.168.1.254/openstack/rhel-7-server-rhceph-2-mon-rpms
+enabled=1
+gpgcheck=0
+
+修改  /etc/hosts  让 机器可以相互 ping 通
+
+初始化 openstack 的卷存储，卷组名称必须叫 cinder-volumes
+yum install -y lvm2
+pvcreate /dev/vdb
+vgcreate cinder-volumes /dev/vdb
+vgs
+
+安装 openstack 依赖的软件包
+qemu-kvm 
+libvirt-client 
+libvirt-daemon 
+libvirt-daemon-driver-qemu 
+python-setuptools 
+
+安装 openstack 工具包  openstack-packstack
+
+创建应答文件                                              共 10731 包
+packstack --gen-answer-file answer.ini
+11   CONFIG_DEFAULT_PASSWORD=Taren1
+42   CONFIG_SWIFT_INSTALL=n
+75   CONFIG_NTP_SERVERS=192.168.1.254
+98   CONFIG_COMPUTE_HOSTS=192.168.1.10,192.168.1.11
+102 CONFIG_NETWORK_HOSTS=192.168.1.10,192.168.1.11
+554 CONFIG_CINDER_VOLUMES_CREATE=n
+840 CONFIG_NEUTRON_ML2_TYPE_DRIVERS=flat,vxlan
+876 CONFIG_NEUTRON_ML2_VXLAN_GROUP=239.1.1.5
+910 CONFIG_NEUTRON_OVS_BRIDGE_MAPPINGS=physnet1:br-ex
+921 CONFIG_NEUTRON_OVS_BRIDGE_IFACES=br-ex:eth0
+936 CONFIG_NEUTRON_OVS_TUNNEL_IF=eth1
+1179 CONFIG_PROVISION_DEMO=n
+
+安装 openstack 
+packstack  --answer-file=answer.ini
+
+docker 安装
+
+yum  自定义源的配置  
+1  创建文件夹 public
+2  拷贝 docker-engine*.rpm 到 public
+3  进入 public 执行  createrepo   .
+
+在虚拟机里面配置新的 yum 地址  repo 文件
+... ...
+baseurl=ftp://192.168.1.254/public
+
+配置完成以后开始安装 docker
+yum  repolist 
+yum  install   docker-engine
+
+systemctl   enable docker
+systemctl   start     docker
+
+docker  images   查看镜像
+docker  search    搜索镜像
+docker  pull        下载镜像
+docker  push      上传镜像
+
+docker  save  名称：标签   >名称.tar
+docker  load   <名称.tar
+
+导入压缩包里的镜像  
+
+创建启动 容器的命令
+docker  run  -it  镜像的名称：镜像的标签  【启动命令】
+-it   交互式
+-d   后台进程,非交互式
+
+查看详细信息
+docker  inspect  镜像的名称：镜像的标签  
+
+1  容器退出以后，我怎么能在进入原来的容器
+    容器我们在退出以后就关闭了，
+    如果想进入原来的容器需要重新启动那个容器
+
+2  为什么有的容器不加启动命令就起不来（nginx，redis）
+    因为是启动容器的默认命令是非交互式命令 
+
+3  启动参数 -it 是干什么用的？
+    i 表示交互的
+    t 表示终端
+
+4  redis 系统为什么是空的？
+    debian      VS       redhat
+    dpkg                    rpm
+    apt-get                yum
+
+5  怎么查看系统中有几个容器
+    在另一个终端查看
+
+6  怎么管理这些容器
+    用 docker 相关命令
+docker  run  -it  镜像名：标签   命令   （交互）
+docker  run  -d  镜像名：标签    （非交互）
+docker  run  -itd   镜像名：标签   命令   （交互式后台进程）
+
+docker   ps   显示运行的容器  -a  显示所有容器   -q  只显示容器 id
+
+docker   start|stop|restart    容器id   
+
+docker   attach   容器id     进入容器 console 终端
+docker   exec  -it   容器id   命令（/bin/bash）
+
+docker   inspect  容器id   显示容器详细信息
+
+docker   top  容器id   显示容器进程
+
+docker   rm   容器id   删除容器
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
