@@ -83,3 +83,6 @@ docker run -it --network=docker1 myos
 
 创建容器，使用宿主机的端口 -p 宿主机端口:容器端口
 docker run -d -p 80:80 -v /var/webroot:/var/www/html 192.168.1.10:5000/myos:httpd
+
+
+curl www.baidu.com -o index.html
