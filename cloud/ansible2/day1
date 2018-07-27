@@ -1,0 +1,168 @@
+yum 模块  installed 安装， removed 删除
+ansible other -m yum -a 'name="lrzsz" state=removed' 
+ansible other -m yum -a 'name="lftp"  state=removed'
+ansible other -m yum -a 'name="lrzsz,lftp" state=installed'
+
+service 模块  name 指定服务名称，enabled= yes|no 设置开机启动， state=stopped|started 启动关闭服务
+
+设置 chronyd 服务开启启动，并启动服务
+ansible other -m service -a 'name="chronyd" enabled="yes"  state="started"'
+
+setup 模块，查看信息  filter 过滤指定的关键字
+
+playbook httpd.yml
+---
+- hosts: web
+  remote_user: root
+  tasks:
+    - name: install the latest version of Apache
+      yum:
+        name: httpd
+        state: installed
+    - lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen '
+        insertafter: '^#Listen '
+        line: 'Listen 8080'
+    - lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^#ServerName'
+        line: 'ServerName localhost'
+    - copy:
+        src: /root/index.html
+        dest: /var/www/html/index.html
+        owner: apache
+        group: apache
+        mode: 0644
+    - service:
+        name: httpd
+        state: started
+        enabled: yes
+
+使用变量和过滤器添加用户
+---
+- hosts: cache
+  remote_user: root
+  vars:
+    un: nb
+  tasks:
+    - user:
+        name: "{{un}}"
+        group: users
+        password: "{{'123456'|password_hash('sha512')}}"
+    - name: ooxx
+      shell: chage -d 0 "{{un}}"
+
+添加用户，忽略错误
+---
+- hosts: db
+  remote_user: root
+  vars:
+    un: zhang3
+  tasks:
+    - shell: adduser "{{un}}"
+      ignore_errors: True
+    - shell: echo 123456|passwd --stdin "{{un}}"
+    - name: ooxx
+      shell: chage -d 0 "{{un}}"
+
+
+handlers 触发
+---
+- hosts: web
+  remote_user: root
+  tasks:
+    - name: install the latest version of Apache
+      yum:
+        name: httpd
+        state: installed
+    - lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen '
+        insertafter: '^#Listen '
+        line: 'Listen 8080'
+      notify:
+        - restart_httpd
+    - lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^#ServerName'
+        line: 'ServerName localhost'
+      notify:
+        - restart_httpd
+    - copy:
+        src: /root/index.html
+        dest: /var/www/html/index.html
+        owner: apache
+        group: apache
+        mode: 0644
+    - copy:
+        src: /root/httpd.conf
+        dest: /etc/httpd/conf/httpd.conf
+        owner: root
+        group: root
+        mode: 0644
+      tags: config_httpd
+      notify:
+        - restart_httpd
+  handlers:
+    - name: restart_httpd
+      service:
+        name: httpd
+        state: restarted
+        enabled: yes
+
+把负载高的web服务器停止
+---
+- hosts: web
+  remote_user: root
+  tasks:
+    - shell: uptime |awk '{printf("%.2f",$(NF-2))}'
+      register: result
+    - service: name=httpd state=stopped
+      when: result.stdout|float > 0.7
+追加 debug 调试信息
+    - name: Show debug info
+      debug: var=ooxx
+
+测试命令 awk 'BEGIN{while(1){}}'
+
+循环添加多用户
+---
+- hosts: web2
+  remote_user: root
+  tasks:
+    - user:
+        name: "{{item.name}}"
+        group: "{{item.group}}"
+        password: "{{'123456'|password_hash('sha512')}}"
+      with_items:
+        - {name: "nb", group: "users"}
+        - {name: "dd", group: "mail" }
+        - {name: "jj", group: "wheel"}
+        - {name: "lx", group: "root" }
+
+嵌套循环
+---
+- hosts: cache
+  remote_user: root
+  vars:
+    un: [a, b, c]
+    id: [1, 2, 3]
+  tasks:
+    - name: add users
+      shell: echo {{item}}
+      with_nested:
+        - "{{un}}"
+        - "{{id}}"
+
+标签设置 tags: config_httpd
+
+检测语法
+ansible-playbook  --syntax-check  playbook.yaml
+
+测试运行
+ansible-playbook -C  playbook.yaml
+
+显示受到影响到主机 --list-hosts
+显示工作的 task --list-tasks
+显示将要运行的 tag --list-tags
