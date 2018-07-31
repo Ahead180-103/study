@@ -1,0 +1,38 @@
+
+output 输出到 Elasticsearch
+增加类型判断，细化区分日志
+output{
+  if [type] == "apachelog"{
+  elasticsearch {
+      hosts => ["192.168.1.15:9200", "192.168.1.11:9200"]
+      index => "apachelog"
+      flush_size => 2000
+      idle_flush_time => 10
+  }}
+}
+
+使用 filebeat 收集日志，发送到 logstash
+logstash beats 配置
+input{
+  ... ...
+  beats{
+    port => 5044
+  }
+}
+
+客户端配置
+filebeat:
+  prospectors:
+    -
+      paths:
+        - /var/log/httpd/access_log
+      input_type: log
+      document_type: apachelog
+  registry_file: /var/lib/filebeat/registry
+output:
+  logstash:
+    hosts: ["192.168.1.20:5044"]
+shipper:
+logging:
+  files:
+    rotateeverybytes: 10485760 # = 10MB
