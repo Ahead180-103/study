@@ -1,0 +1,68 @@
+1 hadoop 单机配置
+/usr/local/hadoop/etc/hadoop/hadoop-env.sh
+export JAVA_HOME="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.131-11.b12.el7.x86_64/jre"
+export HADOOP_CONF_DIR="/usr/local/hadoop/etc/hadoop"
+
+分析单词出现的次数
+./bin/hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-2.7.6.jar wordcount oo xx
+
+#-----------------------------------------------------#
+ALL 表示所有主机，
+NODE 表示 node1,node2,node3
+NN1: 表示 namenode
+#-----------------------------------------------------#
+
+完全分布式集群搭建 -- HDFS
+192.168.1.10	nn01	namenode,secondarynamenode
+192.168.1.11	node1	datanode
+192.168.1.12	node2	datanode
+192.168.1.13	node3	datanode
+
+ALL: 配置 /etc/hosts
+ALL: 安装 java-1.8.0-openjdk-devel
+
+core-site.xml 配置
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://nn01:9000</value>
+    </property>
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>/var/hadoop</value>
+    </property>
+</configuration>
+
+ALL: 创建 /var/hadoop
+
+hdfs-site.xml 配置
+<configuration>
+    <property>
+        <name>dfs.namenode.http-address</name>
+        <value>nn01:50070</value>
+    </property>
+    <property>
+        <name>dfs.namenode.secondary.http-address</name>
+        <value>nn01:50090</value>
+    </property>
+    <property>
+        <name>dfs.replication</name>
+        <value>2</value>
+    </property>
+</configuration>
+
+ALL: 同步配置到所有主机
+
+NN01: 格式化 namenode
+./bin/hdfs namenode -format
+
+NN01: 启动集群
+./sbin/start-dfs.sh
+停止集群可以使用 ./sbin/stop-dfs.sh
+
+ALL: 验证角色 jps
+
+NN01: 验证集群是否组建成功
+./bin/hdfs dfsadmin -report
+
+服务启动日志路径 /usr/local/hadoop/logs
