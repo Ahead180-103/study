@@ -1,0 +1,137 @@
+多表查询
+安装图形管理工具
+用户授权及授权撤销
+
+
+复制表：功能1：   备份表    功能2：  快速建表
+create table  库.表  sql查询；
+一：创建数据库
+	create database db4;
+二：复制db1库下user表到db4库下
+	create table db4.t1 select * from db1.user;
+	select * from db4.t1;
+三：复制db1库下user表中某些字段到db4库下t2数据库
+	create table db4.t2 select id,name from db1.user limit 10;
+	select * from db4.t2;
+
+	create table db4.t3 select * from db1.user where 1=2;
+多表查询 ： select 字段名列表  from  表  where 条件；
+
+where 嵌套查询： 把内层的查询结果作为外层查询的查询条件。
+
+select 字段名列表  from  表   where  条件  ( select 字段名列表 from 表  where 条件)；
+select name,uid from db1.user;      //
+select avg(uid) from db1.user;
+select name,uid from db1.user where uid < (select avg(uid) from db1.user);
+
+desc mysql.user;
+select host,user from mysql.user;
+select host,user from mysql.user where host="localhost";  
+mysql> select name from db4.t1  where name in (select host,user from mysql.user where host="localhost");   //wei成功
+连接查询： （交叉连接  自然连接  内连接  外连接）
+迪卡尔集  a 10  b 3
+        10 X 3 = 30
+create table db4.t5 select name,uid,shell  from db1,user limit 3;
+create table db4.t5 select name,uid,gid,shell  from db1,user limit 5;
+select * from t5,t6  ;
+select * from t5,t6 where 
+
+左连接  :  当条件成立时，以左表为主显示查询结果
+select 字段名列表  from 表1 left join 表2 on 条件；
+右连接  ： 当条件成立时，以右表为主显示查询结果
+select 字段名列表  from 表2 right join 表1 on 条件；
+
+create table t7 select name,uid,shell from db1.user limit 5;
+create table t8 select name,uid,shell from db1.user limit 8;
+select * from t7 left join t8 on t7.uid=t8.uid;
+select t7.* from t7 left  join t8 on t7.uid=t8.uid;
+select t7.* from t7 right join t8 on t7.uid=t8.uid;
+select * from t7 right join t8 on t7.uid=t8.uid;    //t7表中没有的会以null显示
+
+mysql图形管理工具
+软件包phpMyAdmin-2.11.11-all-languages.tar.gz
+部署软件运行环境 linux httpd php   (LAMP)
+ yum -y install httpd php  php-mysql
+systemctl start httpd
+systemctl enable httpd
+
+用户授权：在数据库服务器上添加可以连接的用户，并可以设置添加用户的访问权限。
+默认只有数据库管理在本机能够访问数据库服务器。
+管理员root密码管理：
+mysqladmin -hlocalhost -uroot  -p password  "abc123"
+Enter password: 
+
+重置mysql本地登陆密码
+	第一部：关闭mysql服务
+	第二部： 修改mysql配置文件
+	vim /etc/my.cnf
+	[mysqld]
+	skip-grant-tables        //添加此行
+	#validate_password_policy=0   //注释调密码设置规则
+	#validate_password_length=6//注释调密码设置规则
+	:wq
+第三步：重起服务  systemctl reestart mysqld
+第四步：输入mysql进入
+
+用户授权命令
+mysql > grant 权限列表  on  数据库名   to  用户名@"客户端地址"  identified  by  "密码"  ；
+mysql > grant 权限列表  on  数据库名   to  用户名@"客户端地址"  identified  by  "密码"  with  grant option；  //添加授权权限
+
+
+在50服务端上添加连接用户admin
+grant all  on   *.*  to  admin@“192.168.4.51”  identified  by "123456"；//%代表网络上的所有主机，也可以是一个具体的ip地址
+admin对数据库有所有权限
+grant select,insert,update,delete   on   db1.*  to  webuser@"192.168.4.%"  identified by "123456";
+
+grant select,insert,update,delete(name,uid)   on  db1.user  to  yaya@“%” identified by  "123456";
+
+grant  usage  on
+在客户端验证用户
+which mysql
+yum -y install maiadb
+mysql
+select @@hostname;  //查看数据库主机名
+select user();     //查看什么用户通过哪一个主机登陆的
+show grants;	//查看用户对数据库的权限
+grant all on webdb.* to webuser@"192.168.4.%" identified by "123456";	//50主机设置
+[root@root9pc01 ~]# mysql -h192.168.4.50 -uwebuser -p123456	//客户端
+grant select,update(name,uid) on db1.user to yaya@"%" identified by "123456";	//50主机设置
+[root@root9pc01 ~]# mysql -h192.168.4.50 -uyaya -p123456	//客户端
+
+授权存储在数据库的服务器的授权库mysql库里，使用不同的表。。。。。。。
+
+user 表,存储授权用户的访问权限
+mysql> desc user
+mysql> select host,user from mysql.user;
+mysql> show grants for yaya@"%";
+mysql> select * from mysql.user where user="admin"\G;
+db 表,存储授权用户对数据库的访问权限
+mysql> select host,user,db from mysql.db;
+mysql> select host,user,db from mysql.db where user="webuser" and db="webdb"\G;
+mysql> select * from mysql.db where user="webuser" and db="webdb"\G;
+tables_priv 表,存储授权用户对表的访问权限
+mysql> desc mysql.tables_priv;
+mysql> select host,user,db,table_name from mysql.tables_priv;
+mysql> select * from mysql.tables_priv  where user="yaya"\G;
+columns_priv 表,存储授权用户对字段的访问权限
+mysql> desc mysql.columns_priv;
+mysql> select * from mysql.columns_priv;
+
+mysql> select * from mysql.tables_priv  where user="yaya"\G;
+mysql> update mysql.tables_priv set table_priv="Select,insert" where user="ya
+mysql> select * from mysql.tables_priv  where user="yaya"\G;
+
+权限撤销（撤销的是用户的权限）
+对数据库有过授权授权才可以撤销
+revoke 权限列表  on 数据库   from  用户名@"客户端地址"；
+show grants for admin@"192.168.4.5                                                                                                                                                              1"；
+revoke grant option on *.* from admin@"192.16834.51";
+删除授权用户
+drop user 用户名@"客户端地址"；
+drop user 'admin'@'localhost';
+
+授权用户修改登陆密码
+masql> set password=passwod('新密码')
+管理员root修改授权用户的连接密码
+mysql> set password for 用户名@"客户端地址"=password('新密码');
+

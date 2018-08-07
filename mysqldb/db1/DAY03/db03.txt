@@ -1,0 +1,207 @@
+DBA1-day03
+数据导入/导出
+把系统文件的内容存储到数据库的表里。
+
+
+创建 
+create table user(name  char(30),password char(1),uid int(2),gid int(2),comment char(100),homedir char(150),shell char(50),index (name));
+
+alter table user modify uid int(2),modify gid int(2);
+导入文件到数据表中
+load data infile "/var/lib/mysql-files/passwd" into table user fields terminated by ":" lines terminated by "\n";
+
+
+匹配条件（select update  delete）
+
+
+数值比较  =  >   >=   <  <=  !=
+where  字段名    符号   值
+where  字段名    符号   字段名
+select * from  user  where id=3;
+select name,uid,gid from  user  where uid=gid;
+select name   from user where id<10;
+
+update user set password="F",homedir="/student" where uid<10;
+select id,password,homedir  from user id<10;
+
+字符名比较  =  ！=
+select name,shell from user where shell="/bin/bash";
+select id,name,shell from user where shell!="/bin/bash";
+select * from user where name="mysql";
+
+
+匹配空  is null
+匹配非空  is  not  null
+insert into user(name) values ("yaya");
+select name from user where uid is null;    	#//匹配name，uid字段为空的行
+update user set uid=4008 where uid is null;	#//将uid=4008的值给uid为空的值，
+select name,uid from user where name="yaya";	
+
+将字段值修改为空，（前提是字段允许为空）
+select * from user where id=3;
+update user set gid=null  where id=3;
+
+逻辑比较（多个比较条件）
+逻辑与  and    多个条件必须同时成立
+逻辑或   or     多个条件某一个条件成立即可
+逻辑非    !     not     取反
+          ( )     提高优先级
+
+逻辑与  and    多个条件必须同时成立
+select name,uid  from user where name="root" and uid=0 and shell="/bin/bash";
+逻辑或   or     多个条件某一个条件成立即可
+select name,uid,shell from user where name="root" or uid=7   or shell="/sbin/nologin";
+          ( )     提高优先级
+select name,uid from user where name="root" and uid=1 or uid=3;
+select name,uid from user where name="root" and (uid=1 or uid=3);
+范围内匹配
+select id,name from  user where name in ("apache","mysql","adm","bin");
+select id,name,shell  from user  where shell not in ("/bin/bash","/sbin/nologin");
+select id,name,uid from user where uid in (10,20,30,33);
+
+select id,name,uid from user where uid between 1 and 10;
+
+
+distinct  取消重复值，不显示字段的重复值
+select  shell from user;
+select distinct shell from user;
+select distinct shell from user where uid<=10;
+
+模糊匹配
+select name from user where name like '___';
+select name from user where name like '___' and uid>10;
+select name from user where name like 'r__' ;
+select id,name,uid from user where name like '__%__';
+select name from user where name like 'a%t';
+insert into user(id,name) values (60,null),(61,"");
+select id,name from user where name like '%';
+
+
+正则匹配
+where 字段名   regexp '正则表达式'；
+^  $   .   *   [ ]
+
+正则匹配查找uid是4个字符以上的
+select name,uid from user where uid regexp '....';
+
+正则匹配查找uid是4个字符的
+select name,uid from user where uid regexp '^....$';
+
+正则匹配查找name以t结尾的
+select name,uid from user where name regexp 't$';
+
+匹配查找name字段里面包含数字的
+insert into user(name) values ("yaya9"),("6yaya"),("yay5a"),("ya2ya");
+select name,uid from user where name regexp '[0-9]';	#//匹配 
+select name,uid from user where name regexp '^[0-9]';
+select name,uid from user where name regexp '[0-9]$';
+
+
+四则运算 + - *  / %
+
+修改表结构，在name后出入age一列，设置字符长度2个字符，默认值为18
+alter table user add age tinyint(2) unsigned default 18 after name;
+计算root那一年出生的
+select name,age,2018 - age  as syear from user where name="root";
+select name,age,2018 - age   syear from user where name="root";
+select name,age,2018 - age   from user where name="root";
+给年龄加一岁
+update user set age=age+1;
+求uid和gid的平均值
+select name,uid,gid,(uid+gid)/2  pjz from user where uid >10 and uid<=30;
+
+聚集函数
+select  avg(uid) from user where id<10;
+select  sum(uid) from user;
+select  min(uid) from user;
+select  max(uid) from user;
+select  count(id) from user;
+select count(name) from user;
+select count(name) from user where shell="/bin/bash";
+select count(*) from user;
+select count(id),count(name) from user; 
+
+
+查询结果排序
+基本用法
+– SQL 查询  ORDER BY 字段名  [ asc | desc ]
+select name,uid from user where uid>=10 and uid<=1000  order by uid asc;
+select name,uid from user where uid>=10 and uid<=1000  order by uid desc;
+
+查询结果分组
+ 基本用法
+– SQL 查询 group by 字段名 
+select shell from user where uid>=10 and uid<=1000;
+select shell from user where uid>=10 and uid<=1000 group by shell;
+select shell from user  group by shell;
+过滤数据
+select name from user;
+select name from user having name="jerry";
+select name from user having name="tom";
+
+select id,name from user where name like '%' ;
+select id,name from user where name like '%' having name is null;
+
+select shell from user where uid>=10 and uid<=1000  group by shell having shell="/bin/bash";
+select shell from user where uid>=10 and uid<=1000  group by shell having shell="sync";
+
+sql查询 limit 数字；
+sql查询 limit  3；
+
+sql查询 limit  起始行，行数；
+sql查询 limit 5,5;
+sql查询 limit 0,1;
+sql查询 limit 1;
+select shell from user where uid>=10 and uid<=1000  limit 3;
+
+select  * from user;
+select  * from user limit 0,1;
+select  * from user limit 9,5;
+select  * from user limit 3,3;
+
+select  * from user where uid <=10  order by uid desc limit 3;
+
+select  * from user where uid <=10  order by uid desc limit 3,3;
+
+myisam  特点
+一个表文件有3个文件存储,不支持外键和事务和事务回滚，支持表级锁（给一张表加锁）
+t1.frm(表结构)   t1.MYD（）  t1.NYI
+innodb特点
+一个表文件用2个文件存储，支持外键和事务和事务回滚，支持行级锁（只给被访问的行加锁）
+t2.frm(存放表结构)        t2.idb(存放数据+索引)
+锁：解决并发访问冲突的问题
+锁粒度：行锁  表锁   页级锁（内存中的1MB被成为一页）
+锁类型：
+select   读锁（共享锁）
+pc1  select  * from t1;    //如果是
+pc2  select  * from t1;
+insert   update    delete   写锁（排它锁或互斥锁）
+
+执行查询多的表适合使用myisam存储引擎，这样可以节省系统资源
+执行写多的表适合使用innodb存储引擎，这样可以加大并发访问
+
+事务和事务回滚
+事务：一次sql操作从开始到结束的过程；
+事务回滚：在事务执行过程中任意一步操作失败，恢复所有的操作。
+事务日至文件
+ibdata1   为提交的sql语句
+		LSN  日至序列号
+ib_logfile0 	已经提交的sql
+ib_logfile1		已经提交的sql
+
+事务特性 (ACID)
+Atomic :原子性
+– 事务的整个操作是一个整体,不可分割,要么全部成
+功,要么全部失败。
+Consistency : 一致性
+– 事务操作的前后,表中的记录没有变化。
+Isolation :隔离性
+– 事务操作是相互隔离不受影响的。
+Durability :持久性
+– 数据一旦提交,不可改变,永久改变表数据
+mysql系统环境变量的查看
+show variables like "autocommit"; 	// 查看提交状态
+show variables like '%auto%';		// 查看提交状态
+set autocommit=off; 	// 关闭自动提交
+rollback ; 			// 数据回滚
+commit; 			// 提交数据
