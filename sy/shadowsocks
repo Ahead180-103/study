@@ -1,0 +1,9 @@
+{
+"server":"172.20.29.178",
+"server_port":41491,
+"password":"gauyao1125",
+"timeout":300,
+"method":"aes-256-cfb",
+"fast_open":false,
+"workers":1
+}
