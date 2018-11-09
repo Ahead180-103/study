@@ -1,12 +1,13 @@
 
 apt-get  install python-pip
 pip install shadowsocks
-vim /etc/shadowsocks.json
 
+
+vim /etc/shadowsocks.json
 {
-"server":"172.20.29.178",
-"server_port":41491,
-"password":"gauyao1125",
+"server":"your_ip",
+"server_port":your_port,
+"password":"your_pasword",
 "timeout":300,
 "method":"aes-256-cfb",
 "fast_open":false,
